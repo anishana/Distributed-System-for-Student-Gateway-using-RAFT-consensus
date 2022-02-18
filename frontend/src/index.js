@@ -1,23 +1,25 @@
 import React from 'react';
-import ReactDOM, {render} from 'react-dom';
+import ReactDOM, { render } from 'react-dom';
 // import './index.css';
 import { BrowserRouter, Router, Route, Routes } from 'react-router-dom'
 // import App from './App';
 import reportWebVitals from './reportWebVitals';
 // import 'bootstrap/dist/css/bootstrap.min.css';
-import { StudentDetails } from './pages/student_details.js';
+import { StudentDetails } from './pages/student_details';
+import { ListStudents } from './pages/list_students'
 import { Drawer } from '@mui/material';
 import { NavBar } from './components/NavBar.js';
 
 const rootElement = document.getElementById("root");
 render(
   <>
-  <NavBar/>
-  <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<StudentDetails/>} />
-    </Routes>
-  </BrowserRouter>
+    <BrowserRouter>
+      <NavBar />
+      <Routes>
+        <Route path="/" element={<StudentDetails />} />
+        <Route path="/list" element={<ListStudents />} />
+      </Routes>
+    </BrowserRouter>
   </>,
   rootElement
 );

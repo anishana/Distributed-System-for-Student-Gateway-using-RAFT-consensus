@@ -7,6 +7,7 @@ public class StudentRequest {
     private String studentNumber;
     private String email;
     private Integer age;
+    private Double cgpa;
     private List<String> subjects;
 
     public String getName() {
@@ -48,6 +49,14 @@ public class StudentRequest {
 
     public void setSubjects(List<String> subjects) {
         this.subjects = subjects;
+    }
+
+    public Double getCgpa() {
+        return cgpa;
+    }
+
+    public void setCgpa(Double cgpa) {
+        this.cgpa = cgpa;
     }
 
 }

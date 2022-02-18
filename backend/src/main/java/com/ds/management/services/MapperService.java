@@ -13,6 +13,8 @@ public class MapperService {
         student.setStudentNumber(request.getStudentNumber());
         student.setAge(request.getAge());
         student.setEmail(request.getEmail());
+        student.setCgpa(request.getCgpa());
+        student.setSubjects(request.getSubjects());
         return student;
     }
 

@@ -6,7 +6,7 @@ const api = axios.create({
 
 
 export const insertStudentDetails = payload => api.post(`/student/create`, payload);
-export const getStudentDetails = payload => api.post(`/student/get`);
+export const getStudentDetails = payload => api.get(`/student/get`);
 export const getStudentDetailsByEmail= email => api.post(`/students/${email}`);
 
 

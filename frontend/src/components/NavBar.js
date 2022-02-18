@@ -11,9 +11,15 @@ import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
-
+import { BrowserRouter, Router, Route, Routes, Link } from 'react-router-dom'
 const pages = ['New Student', 'Students'];
-const settings = [];
+const links = [{
+  'header': pages[0],
+  'link': '/',
+}, {
+  'header': pages[1],
+  'link': '/list',
+}];
 
 export const NavBar = (props) => {
   const [anchorElNav, setAnchorElNav] = React.useState(null);
@@ -34,8 +40,9 @@ export const NavBar = (props) => {
     setAnchorElUser(null);
   };
 
-  const goToPage = () => {
-    const location = props.location;
+  const goToPage = (location) => {
+    // window.location(location)
+    // const location = props.location;
   }
 
   return (
@@ -96,14 +103,22 @@ export const NavBar = (props) => {
             LOGO
           </Typography>
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-            {pages.map((page) => (
+            {/* <Link to="/">
               <Button
-                key={page}
-                onClick={goToPage}
                 sx={{ my: 2, color: 'white', display: 'block' }}
-              >
-                {page}
-              </Button>
+              >New Student</Button>
+            </Link>
+            <Link to="/list">List</Link> */}
+            {links.map((page) => (
+
+              <Link to={page.link} style={{ textDecoration: 'none' }}>
+                <Button
+                  key={page.header}
+                  sx={{ my: 2, color: 'white', display: 'block' }}
+                >
+                  {page.header}
+                </Button>
+              </Link>
             ))}
           </Box>
 

@@ -16,7 +16,7 @@ public class Student {
     private String email;
     private Integer age;
     private List<String> subjects;
-    private Float cgpa;
+    private Double cgpa;
 
     public String getId() {
         return id;
@@ -66,11 +66,11 @@ public class Student {
         this.subjects = subjects;
     }
 
-    public Float getCgpa() {
+    public Double getCgpa() {
         return cgpa;
     }
 
-    public void setCgpa(Float cgpa) {
+    public void setCgpa(Double cgpa) {
         this.cgpa = cgpa;
     }
 

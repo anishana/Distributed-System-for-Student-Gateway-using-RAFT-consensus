@@ -1,4 +1,4 @@
-import React,{ useState } from 'react';
+import React, { useState } from 'react';
 import { Field, useFormik } from 'formik'
 import * as yup from 'yup';
 import { FormInput } from '../components/FormInput';
@@ -8,7 +8,7 @@ import { Row, Col, Form } from "reactstrap";
 import { Drawer } from '@mui/material';
 import FormControl from '@mui/material/FormControl';
 import { TextField } from '@material-ui/core';
-import {insertStudentDetails} from '../api/student-api';
+import { insertStudentDetails } from '../api/student-api';
 // import {CustomSelect,FormikMultiSelect} from '../components/FormikMultiSelect'
 
 
@@ -41,12 +41,14 @@ export const StudentDetails = () => {
             email: '',
             subjects: [],
             age: '',
+            cgpa: '',
+            studentNumber: ''
         },
         // validationSchema: validationSchema,
         onSubmit: (values) => {
 
             let sub = {
-                'subjects':subjects
+                'subjects': subjects
             }
             const formData = Object.assign({}, values, sub);
             console.log(formData);
@@ -63,63 +65,82 @@ export const StudentDetails = () => {
     }
 
     return (
-        <div>
 
-            <Row className="mt-4">
-                <Col sm="12" md={{ size: 6, offset: 3 }}>
-                    <Form onSubmit={formik.handleSubmit}>
-                        <FormInput
-                            id="Name"
-                            name="name"
-                            label="Name"
-                            value={formik.values.name}
-                            onChange={formik.handleChange}
-                            error={formik.touched.name && Boolean(formik.errors.name)}
-                            helperText={formik.touched.name && formik.errors.name}
-                            inputProps={ariaLabel}
-                        />
-                        <FormInput
-                            id="email"
-                            name="email"
-                            label="Email"
-                            value={formik.values.email}
-                            onChange={formik.handleChange}
-                            error={formik.touched.email && Boolean(formik.errors.email)}
-                            helperText={formik.touched.email && formik.errors.email}
-                            inputProps={ariaLabel}
-                        />
+        <Row className="mt-4">
+            <Col sm="12" md={{ size: 6, offset: 3 }}>
+                <Form onSubmit={formik.handleSubmit}>
+                    <FormInput
+                        id="Name"
+                        name="name"
+                        label="Name"
+                        value={formik.values.name}
+                        onChange={formik.handleChange}
+                        error={formik.touched.name && Boolean(formik.errors.name)}
+                        helperText={formik.touched.name && formik.errors.name}
+                        inputProps={ariaLabel}
+                    />
+                    <FormInput
+                        id="studentNumber"
+                        name="studentNumber"
+                        label="Student Number"
+                        value={formik.values.studentNumber}
+                        onChange={formik.handleChange}
+                        error={formik.touched.studentNumber && Boolean(formik.errors.studentNumber)}
+                        helperText={formik.touched.studentNumber && formik.errors.studentNumber}
+                        inputProps={ariaLabel}
+                    />
+                    <FormInput
+                        id="email"
+                        name="email"
+                        label="Email"
+                        value={formik.values.email}
+                        onChange={formik.handleChange}
+                        error={formik.touched.email && Boolean(formik.errors.email)}
+                        helperText={formik.touched.email && formik.errors.email}
+                        inputProps={ariaLabel}
+                    />
+                    <FormInput
+                        id="cgpa"
+                        name="cgpa"
+                        label="GPA"
+                        value={formik.values.cgpa}
+                        onChange={formik.handleChange}
+                        error={formik.touched.cgpa && Boolean(formik.errors.cgpa)}
+                        helperText={formik.touched.cgpa && formik.errors.cgpa}
+                        inputProps={ariaLabel}
+                    />
 
-                        <FormInput
-                            id="age"
-                            name="age"
-                            label="Age"
-                            value={formik.values.age}
-                            onChange={formik.handleChange}
-                            error={formik.touched.age && Boolean(formik.errors.age)}
-                            helperText={formik.touched.age && formik.errors.age}
-                            inputProps={ariaLabel}
-                        />
+                    <FormInput
+                        id="age"
+                        name="age"
+                        label="Age"
+                        value={formik.values.age}
+                        onChange={formik.handleChange}
+                        error={formik.touched.age && Boolean(formik.errors.age)}
+                        helperText={formik.touched.age && formik.errors.age}
+                        inputProps={ariaLabel}
+                    />
 
 
 
-                        <CustomMultiSelect
-                            id="subjects"
-                            name="subjects"
-                            label="Subjects"
-                            optionList={subjectList}
-                            onChange={handleSubjectChange}
-                            value={formik.values.subjects}
-                        />
+                    <CustomMultiSelect
+                        id="subjects"
+                        name="subjects"
+                        label="Subjects"
+                        optionList={subjectList}
+                        onChange={handleSubjectChange}
+                        value={formik.values.subjects}
+                    />
+                    <Row>
                         <FormControl sx={{ m: 3, width: 100 }}>
                             <Button color="primary" variant="contained" type="submit">
                                 Submit
                             </Button>
                         </FormControl>
-
-                    </Form>
-                </Col>
-            </Row>
-        </div>
+                    </Row>
+                </Form>
+            </Col>
+        </Row>
 
     )
 }
