@@ -1,10 +1,7 @@
 import React from 'react';
 import ReactDOM, { render } from 'react-dom';
-// import './index.css';
 import { BrowserRouter, Router, Route, Routes } from 'react-router-dom'
-// import App from './App';
 import reportWebVitals from './reportWebVitals';
-// import 'bootstrap/dist/css/bootstrap.min.css';
 import { StudentDetails } from './pages/student_details';
 import { ListStudents } from './pages/list_students'
 import { Drawer } from '@mui/material';

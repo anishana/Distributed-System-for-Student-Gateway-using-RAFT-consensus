@@ -3,6 +3,7 @@ import * as yup from 'yup';
 import { Row, Col, Form } from "reactstrap";
 import { getStudentDetails } from '../api/student-api';
 import { DataGrid } from '@mui/x-data-grid';
+import FormControl from '@mui/material/FormControl';
 // import {CustomSelect,FormikMultiSelect} from '../components/FormikMultiSelect'
 
 export const ListStudents = () => {
@@ -54,6 +55,7 @@ export const ListStudents = () => {
     ];
 
     return (
+
         <div style={{ height: '650px', width: '100%' }}>
 
             <DataGrid
@@ -61,9 +63,9 @@ export const ListStudents = () => {
                 columns={columns}
                 pageSize={5}
                 rowsPerPageOptions={[5]}
-                // checkboxSelection
-                // disableSelectionOnClick
-                // columnBuffer={8}
+            // checkboxSelection
+            // disableSelectionOnClick
+            // columnBuffer={8}
             />
         </div>
 

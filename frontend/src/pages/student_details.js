@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
-import { Field, useFormik } from 'formik'
+import { useFormik } from 'formik'
 import * as yup from 'yup';
 import { FormInput } from '../components/FormInput';
 import { CustomMultiSelect } from '../components/CustomMultiSelect';
-import Button from '@material-ui/core/Button';
+import Button from '@mui/material/Button';
 import { Row, Col, Form } from "reactstrap";
-import { Drawer } from '@mui/material';
-import FormControl from '@mui/material/FormControl';
-import { TextField } from '@material-ui/core';
 import { insertStudentDetails } from '../api/student-api';
-// import {CustomSelect,FormikMultiSelect} from '../components/FormikMultiSelect'
+import Box from '@mui/material/Box';
 
 
 const ariaLabel = { 'aria-label': 'description' };
@@ -44,8 +41,8 @@ export const StudentDetails = () => {
             cgpa: '',
             studentNumber: ''
         },
-        // validationSchema: validationSchema,
-        onSubmit: (values) => {
+        validationSchema: validationSchema,
+        onSubmit: (values, {resetForm}) => {
 
             let sub = {
                 'subjects': subjects
@@ -66,7 +63,8 @@ export const StudentDetails = () => {
 
     return (
 
-        <Row className="mt-4">
+        // <Row style={{width:100}}>
+        <Box >
             <Col sm="12" md={{ size: 6, offset: 3 }}>
                 <Form onSubmit={formik.handleSubmit}>
                     <FormInput
@@ -132,15 +130,15 @@ export const StudentDetails = () => {
                         value={formik.values.subjects}
                     />
                     <Row>
-                        <FormControl sx={{ m: 3, width: 100 }}>
+                        <Box textAlign='center' >
                             <Button color="primary" variant="contained" type="submit">
                                 Submit
                             </Button>
-                        </FormControl>
+                        </Box>
                     </Row>
                 </Form>
             </Col>
-        </Row>
+        </Box>
 
     )
 }

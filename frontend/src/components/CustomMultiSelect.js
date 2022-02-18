@@ -54,7 +54,7 @@ export const CustomMultiSelect = (
     }
 
     return (
-        <FormControl sx={{ m: 1, width: 300 }}>
+        <FormControl   sx={{ m: 1, width: 300, mt:2, ml:3 }}>
             <InputLabel id="demo-multiple-name-label">{label}</InputLabel>
             <Select
                 id={id}
