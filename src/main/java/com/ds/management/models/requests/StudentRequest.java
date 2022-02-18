@@ -1,10 +1,13 @@
 package com.ds.management.models.requests;
 
+import java.util.List;
+
 public class StudentRequest {
     private String name;
     private String studentNumber;
     private String email;
     private Integer age;
+    private List<String> subjects;
 
     public String getName() {
         return name;
@@ -37,4 +40,14 @@ public class StudentRequest {
     public void setAge(Integer age) {
         this.age = age;
     }
+
+
+    public List<String> getSubjects() {
+        return subjects;
+    }
+
+    public void setSubjects(List<String> subjects) {
+        this.subjects = subjects;
+    }
+
 }
