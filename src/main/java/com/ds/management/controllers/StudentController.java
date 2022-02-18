@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://localhost:8081")
 @RestController
 @RequestMapping("/student")
 public class StudentController {
@@ -39,7 +38,7 @@ public class StudentController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<Student> createStudent(StudentRequest request) {
+    public ResponseEntity<Student> createStudent(@RequestBody StudentRequest  request) {
         try{
             Student student= studentService.createStudent(request);
             return new ResponseEntity<>(student, HttpStatus.OK);

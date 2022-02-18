@@ -4,7 +4,7 @@ import org.bson.codecs.pojo.annotations.BsonProperty;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document("subject")
+@Document(collection = "subject")
 public class Subject {
 
     @Id
