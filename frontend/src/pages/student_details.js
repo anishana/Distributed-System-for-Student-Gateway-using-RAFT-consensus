@@ -7,7 +7,7 @@ import Button from '@mui/material/Button';
 import { Row, Col, Form } from "reactstrap";
 import { insertStudentDetails } from '../api/student-api';
 import Box from '@mui/material/Box';
-
+import CircularProgress from '@mui/material/CircularProgress'
 
 const ariaLabel = { 'aria-label': 'description' };
 
@@ -42,7 +42,7 @@ export const StudentDetails = () => {
             studentNumber: ''
         },
         validationSchema: validationSchema,
-        onSubmit: (values, {resetForm}) => {
+        onSubmit: (values, { resetForm }) => {
 
             let sub = {
                 'subjects': subjects
@@ -65,6 +65,7 @@ export const StudentDetails = () => {
 
         // <Row style={{width:100}}>
         <Box >
+            
             <Col sm="12" md={{ size: 6, offset: 3 }}>
                 <Form onSubmit={formik.handleSubmit}>
                     <FormInput
@@ -118,8 +119,6 @@ export const StudentDetails = () => {
                         helperText={formik.touched.age && formik.errors.age}
                         inputProps={ariaLabel}
                     />
-
-
 
                     <CustomMultiSelect
                         id="subjects"
