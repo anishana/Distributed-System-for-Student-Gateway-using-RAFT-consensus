@@ -13,4 +13,6 @@ public interface StudentService {
 
     public Student createStudent(StudentRequest request);
 
+    public void deleteStudent(String id);
+
 }

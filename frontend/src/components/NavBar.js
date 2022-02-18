@@ -103,12 +103,7 @@ export const NavBar = (props) => {
             LOGO
           </Typography>
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-            {/* <Link to="/">
-              <Button
-                sx={{ my: 2, color: 'white', display: 'block' }}
-              >New Student</Button>
-            </Link>
-            <Link to="/list">List</Link> */}
+           
             {links.map((page) => (
 
               <Link to={page.link} style={{ textDecoration: 'none' }}>

@@ -1,0 +1,31 @@
+version: "3"
+services:
+  react-app:
+    image: client
+    stdin_open: true
+    ports: 
+      - "3000:3000"
+    networks:
+      - ds-app
+  api-server:
+    image: java-docker
+    ports:
+      - "8080:8080"
+    networks:
+      - ds-app
+    depends_on:
+      - mongo
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    networks:
+      - ds-app
+    volumes:
+      - mongo-data:/data/db
+networks:
+  ds-app:
+    driver: bridge
+volumes:
+  mongo-data:
+    driver: local

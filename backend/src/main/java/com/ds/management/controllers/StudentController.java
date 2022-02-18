@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -16,6 +18,15 @@ public class StudentController {
 
     @Autowired
     private StudentService studentService;
+
+    @GetMapping("/ping")
+    public ResponseEntity<List<String>> ping() {
+        try{
+            return new ResponseEntity<List<String>>(Arrays.asList("Hello World 1"), HttpStatus.OK);
+        } catch (Exception ex){
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 
     @GetMapping("/get")
     public ResponseEntity<List<Student>> getAllStudents() {
@@ -42,6 +53,16 @@ public class StudentController {
         try{
             Student student= studentService.createStudent(request);
             return new ResponseEntity<>(student, HttpStatus.OK);
+        } catch (Exception ex){
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<String> createStudent(@PathVariable("id") String id) {
+        try{
+            studentService.deleteStudent(id);
+            return new ResponseEntity<String>(id, HttpStatus.OK);
         } catch (Exception ex){
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }

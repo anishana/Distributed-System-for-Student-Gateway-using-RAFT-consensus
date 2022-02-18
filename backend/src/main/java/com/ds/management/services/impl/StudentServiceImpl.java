@@ -32,4 +32,9 @@ public class StudentServiceImpl implements StudentService {
         repository.save(student);
         return student;
     }
+
+    @Override
+    public void deleteStudent(String id){
+        repository.deleteById(id);
+    }
 }
