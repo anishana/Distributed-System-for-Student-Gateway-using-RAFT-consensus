@@ -7,7 +7,6 @@ import Button from '@mui/material/Button';
 import { Row, Col, Form } from "reactstrap";
 import { insertStudentDetails } from '../api/student-api';
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress'
 
 const ariaLabel = { 'aria-label': 'description' };
 
@@ -27,17 +26,18 @@ const validationSchema = yup.object({
         .required('GPA is required'),
     studentNumber: yup
         .number('Enter your Student Number')
-        .required('Student Number is required'),
-    subjects: yup
-        .string('Enter your subjects')
-        .required('Please select subjects needed'),
+        .required('Student Number is required')
 });
 
 const subjectList = [
     'CSE 586-Distributed Systems',
     'CSE 562-Database Systems',
     'CSE 529-Algorithms for Modern Computing',
-    'CSE 611-MS Project Development'
+    'CSE 546-Reinforcement Learning',
+    'CSE 611-MS Project Development',
+    'CSE 610-Special Topics',
+    'CSE 676-Deep Learning',
+    'CSE 603-Parallel and Distributed System'
 ];
 export const StudentDetails = () => {
     const [subjects, setSubjects] = React.useState([]);
@@ -51,7 +51,7 @@ export const StudentDetails = () => {
             studentNumber: ''
         },
         validationSchema: validationSchema,
-        onSubmit: (values, { resetForm }) => {
+        onSubmit: (values) => {
 
             let sub = {
                 'subjects': subjects
