@@ -22,6 +22,15 @@ const validationSchema = yup.object({
     age: yup
         .number('Enter your age')
         .required('Age is required'),
+    cgpa: yup
+        .number('Enter your GPA')
+        .required('GPA is required'),
+    studentNumber: yup
+        .number('Enter your Student Number')
+        .required('Student Number is required'),
+    subjects: yup
+        .string('Enter your subjects')
+        .required('Please select subjects needed'),
 });
 
 const subjectList = [
@@ -65,7 +74,7 @@ export const StudentDetails = () => {
 
         // <Row style={{width:100}}>
         <Box >
-            
+
             <Col sm="12" md={{ size: 6, offset: 3 }}>
                 <Form onSubmit={formik.handleSubmit}>
                     <FormInput
