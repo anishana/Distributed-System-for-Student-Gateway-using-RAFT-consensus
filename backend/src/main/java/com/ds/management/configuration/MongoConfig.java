@@ -36,7 +36,7 @@ public class MongoConfig {
     public MongoClient mongo() {
 
         StringBuilder con = new StringBuilder();
-        con.append("mongodb://").append(host).append(":").append(port).append("/").append(database);
+        con.append("localhost://").append(host).append(":").append(port).append("/").append(database);
 
         ConnectionString connectionString = new ConnectionString(con.toString());
 

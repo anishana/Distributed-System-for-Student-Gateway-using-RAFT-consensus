@@ -10,6 +10,7 @@ export const ListStudents = () => {
     const [rows, setRows] = React.useState([]);
     useEffect(() => {
         console.log("Initial");
+        // setRows('[{"id":"621056afeb331802fa5bcfc5","name":"Anish Joshi","studentNumber":"50419412","email":"anishana@buffalo.edu","age":27,"subjects":["CSE 586-Distributed Systems","CSE 562-Database Systems","CSE 529-Algorithms for Modern Computing","CSE 611-MS Project Development"],"cgpa":3.84},{"id":"62105a2fd9a6c23924f32865","name":"Neha Mishra","studentNumber":"50416280","email":"anishana@buffalo.edu","age":26,"subjects":["CSE 586-Distributed Systems","CSE 529-Algorithms for Modern Computing","CSE 603-Parallel and Distributed System"],"cgpa":3.6}]');
         getStudentDetails().then(response => {
             // console.log(response.data);
             setRows(response.data);
