@@ -35,8 +35,11 @@ public class MongoConfig {
     @Bean
     public MongoClient mongo() {
 
+        LOGGER.info("mongo.host: "+host);
+        LOGGER.info("mongo.port: "+port);
+
         StringBuilder con = new StringBuilder();
-        con.append("localhost://").append(host).append(":").append(port).append("/").append(database);
+        con.append("mongodb://").append(host).append(":").append(port).append("/").append(database);
 
         ConnectionString connectionString = new ConnectionString(con.toString());
 

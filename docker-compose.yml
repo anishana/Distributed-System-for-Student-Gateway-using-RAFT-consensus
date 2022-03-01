@@ -6,26 +6,83 @@ services:
     ports: 
       - "3000:3000"
     networks:
-      - ds-app
+      - servers-network
   api-server:
     image: java-docker
-    ports:
-      - "8080:8080"
     networks:
-      - ds-app
+      - db-app
+      - servers-network
     depends_on:
       - mongo
+    environment:
+      DB_HOST: mongo
+      DB_PORT: 27017
+      MASTER: "yes"
+    ports: 
+      - "8080:8080"
   mongo:
     image: mongo
+    networks:
+      - db-app
     ports:
       - "27017:27017"
-    networks:
-      - ds-app
     volumes:
       - mongo-data:/data/db
+  api-server-1:
+    image: java-docker
+    networks:
+      - db-app-1
+      - servers-network
+    depends_on:
+      - mongo-1
+    environment:
+      DB_HOST: mongo-1
+      DB_PORT: 27017
+      MASTER: "no"
+    ports: 
+      - "8081:8080"
+  mongo-1:
+    image: mongo
+    networks:
+      - db-app-1
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-data-1:/data/db
+  api-server-2:
+    image: java-docker
+    networks:
+      - db-app-2
+      - servers-network
+    depends_on:
+      - mongo-2
+    environment:
+      DB_HOST: mongo-2
+      DB_PORT: 27017
+      MASTER: "no"
+    ports: 
+      - "8082:8080"
+  mongo-2:
+    image: mongo
+    networks:
+      - db-app-2
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo-data-2:/data/db
 networks:
-  ds-app:
+  db-app:
+    driver: bridge
+  db-app-1:
+    driver: bridge
+  db-app-2:
+    driver: bridge
+  servers-network:
     driver: bridge
 volumes:
   mongo-data:
+    driver: local
+  mongo-data-1:
+    driver: local
+  mongo-data-2:
     driver: local
