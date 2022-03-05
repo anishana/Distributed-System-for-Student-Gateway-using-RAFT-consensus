@@ -42,6 +42,7 @@
                     <environmentVariables>
                         <DB_HOST>localhost</DB_HOST>
                         <DB_PORT>27017</DB_PORT>
+                        <MASTER>no</MASTER>
                     </environmentVariables>
                 </configuration>
             </plugin>
