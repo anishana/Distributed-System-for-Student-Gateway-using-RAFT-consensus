@@ -7,6 +7,9 @@ services:
       - "3000:3000"
     networks:
       - servers-network
+    build:
+      context: ./frontend
+      dockerfile: ./Dockerfile
   api-server:
     image: java-docker
     networks:
@@ -20,6 +23,9 @@ services:
       MASTER: "yes"
     ports: 
       - "8080:8080"
+    build:
+      context: ./backend
+      dockerfile: ./Dockerfile
   mongo:
     image: mongo
     networks:

@@ -13,4 +13,8 @@ public interface StudentRepository extends MongoRepository<Student, String> {
 
     void deleteById(String id);
 
+    void deleteByStudentNumber(Integer studentNumber);
+
+    void deleteByEmail(String email);
+
 }

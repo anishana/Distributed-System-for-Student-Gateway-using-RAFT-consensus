@@ -58,11 +58,11 @@ public class StudentController {
         }
     }
 
-    @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> createStudent(@PathVariable("id") String id) {
+    @DeleteMapping("/delete/{email}")
+    public ResponseEntity<String> createStudent(@PathVariable("email") String email) {
         try{
-            studentService.deleteStudent(id);
-            return new ResponseEntity<String>(id, HttpStatus.OK);
+            studentService.deleteStudent(email);
+            return new ResponseEntity<String>(email, HttpStatus.OK);
         } catch (Exception ex){
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }

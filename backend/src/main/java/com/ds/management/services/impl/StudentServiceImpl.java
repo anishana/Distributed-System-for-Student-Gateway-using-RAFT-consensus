@@ -103,30 +103,31 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
-    public void deleteStudent(String id){
+    public void deleteStudent(String email){
+
         if(isMaster.equalsIgnoreCase("yes")){
-            LOGGER.info("createStudent.is Master");
+            LOGGER.info("deleteStudent.is Master");
             AtomicInteger count= new AtomicInteger(1);
             RestTemplate restTemplate = new RestTemplate();
             ResponseExtractor<ClientHttpResponse> responseExtractor = response -> {
-                LOGGER.info("createStudent"+response.toString());
+                LOGGER.info("deleteStudent"+response.toString());
                 if(response.getStatusCode().value()==200){
                     count.addAndGet(1);
                     if(count.get()==3){
-                        repository.deleteById(id);
+                        repository.deleteByEmail(email);
                     }
                 }
                 return response;
             };
 
             for(int i=1; i<3; i++){
-                String resourceUrl= serverUrl+ Integer.toString(i)+ ":8080/"+ studentDelete+"/"+id;
-                LOGGER.info("createStudent.resourceUrl "+resourceUrl);
-                restTemplate.execute(resourceUrl, HttpMethod.POST, null, responseExtractor);
+                String resourceUrl= serverUrl+ Integer.toString(i)+ ":8080/"+ studentDelete+"/"+email;
+                LOGGER.info("deleteStudent.resourceUrl "+resourceUrl);
+                restTemplate.execute(resourceUrl, HttpMethod.DELETE, null, responseExtractor);
             }
         } else{
-            LOGGER.info("createStudent.is not Master");
-            repository.deleteById(id);
+            LOGGER.info("deleteStudent.is not Master");
+            repository.deleteByEmail(email);
         }
 
     }
