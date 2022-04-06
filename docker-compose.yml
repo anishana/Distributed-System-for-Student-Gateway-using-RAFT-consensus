@@ -70,6 +70,46 @@ services:
       - "27019:27017"
     volumes:
       - mongo-data-2:/data/db
+  api-server-3:
+    image: java-docker
+    networks:
+      - db-app-3
+      - servers-network
+    depends_on:
+      - mongo-3
+    environment:
+      DB_HOST: mongo
+      DB_PORT: 27017
+    ports:
+      - "8083:8080"
+  mongo-3:
+    image: mongo
+    networks:
+      - db-app-3
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongo-data-3:/data/db
+  api-server-4:
+    image: java-docker
+    networks:
+      - db-app-4
+      - servers-network
+    depends_on:
+      - mongo-4
+    environment:
+      DB_HOST: mongo
+      DB_PORT: 27017
+    ports:
+      - "8084:8080"
+  mongo-4:
+    image: mongo
+    networks:
+      - db-app-4
+    ports:
+      - "27021:27017"
+    volumes:
+      - mongo-data-4:/data/db
 networks:
   db-app:
     driver: bridge
