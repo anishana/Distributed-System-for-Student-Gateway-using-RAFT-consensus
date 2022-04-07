@@ -1,16 +1,21 @@
 package com.ds.management.util;
 
+import com.ds.management.configuration.SocketConfig;
 import com.ds.management.constants.NodeConstants;
 import com.ds.management.constants.NodeInfo;
 import com.ds.management.models.NodeState;
 import com.ds.management.models.RequestVoteRPC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.net.*;
 import java.net.InetAddress;
 
-public class UDPSocketListener implements Runnable {
+//@Service
+public class UDPSocketListener {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(UDPSocketListener.class);
 
@@ -19,17 +24,31 @@ public class UDPSocketListener implements Runnable {
     private DatagramSocket socket;
     private NodeState nodeState;
 
+
     public UDPSocketListener() throws SocketException {
         socket= new DatagramSocket(NodeInfo.port);
-        nodeState= NodeState.getNodeState();
-        socket.setSoTimeout(nodeState.getTimeout());
-        LOGGER.info("node: "+nodeState.toString());
+//        socket.setSoTimeout(nodeState.getTimeout());
+//        LOGGER.info("node: "+nodeState.toString());
     }
 
-    public void run() {
+    @PostConstruct
+    public void setNodeState() throws SocketException {
+//        socket= socketConfig.socket();
+//        socket= new DatagramSocket(NodeInfo.port);
+        nodeState= NodeState.getNodeState();
+        socket.setSoTimeout(nodeState.getTimeout());
+
+    }
+
+    public void test(){
+        LOGGER.info("Nothing doing");
+    }
+
+    public void listen() {
         isRunning = true;
+        LOGGER.info("Running: "+NodeState.getNodeState().getNodeValue());
         try {
-            LOGGER.info("Running: "+nodeState.getNodeValue());
+
             while (isRunning) {
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
 
@@ -42,7 +61,7 @@ public class UDPSocketListener implements Runnable {
                 int port = packet.getPort();
                 packet = new DatagramPacket(buf, buf.length, address, port);
                 String received = new String(packet.getData(), 0, packet.getLength());
-                LOGGER.info("Msg : "+ received+ "Received: "+ address.getHostName()+ "; Current: "+ nodeState.getNodeValue());
+                LOGGER.info("Msg : "+ received+ "Received: "+ address.getHostName()+ "; Current: "+ NodeState.getNodeState().getNodeValue());
                 socket.send(packet);
             }
             socket.close();

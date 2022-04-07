@@ -22,6 +22,7 @@ public class NodeState {
         heartbeat= random.nextInt(150)+ base;
         timeout= this.heartbeat*2;
         server_state= NodeConstants.SERVER_STATE.FOLLOWER;
+        nodeValue = NodeInfo.NODE_VALUE;
     }
 
     public static NodeState getNodeState(){

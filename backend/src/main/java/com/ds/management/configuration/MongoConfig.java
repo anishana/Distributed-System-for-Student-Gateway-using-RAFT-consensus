@@ -31,12 +31,16 @@ public class MongoConfig {
     @Value("${spring.data.mongodb.database}")
     private String database;
 
+    @Value("${node.value}")
+    private String nodeValue;
+
 
     @Bean
     public MongoClient mongo() {
 
         LOGGER.info("mongo.host: "+host);
         LOGGER.info("mongo.port: "+port);
+        LOGGER.info("nodeValue: "+nodeValue);
 
         StringBuilder con = new StringBuilder();
         con.append("mongodb://").append(host).append(":").append(port).append("/").append(database);

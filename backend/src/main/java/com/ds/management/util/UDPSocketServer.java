@@ -1,14 +1,17 @@
 package com.ds.management.util;
+import com.ds.management.configuration.SocketConfig;
 import com.ds.management.constants.NodeInfo;
 import com.ds.management.models.NodeState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.net.*;
 
 @Service
@@ -29,8 +32,13 @@ public class UDPSocketServer{
 
     public UDPSocketServer() throws SocketException, UnknownHostException {
         buf= new byte[256];
-        socket= new DatagramSocket();
         address= InetAddress.getByName("localhost");
+    }
+
+    @PostConstruct
+    public void setNodeState() throws SocketException {
+//        socket= socketConfig.socket();
+        socket= new DatagramSocket();
         NodeState.getNodeState().setNodeValue(val);
         LOGGER.info("SERVER: "+ NodeState.getNodeState());
     }
@@ -39,6 +47,7 @@ public class UDPSocketServer{
     @Scheduled(fixedRate = 150)
     public void sendEcho() {
         try {
+//                LOGGER.info("Sending");
             if(isMaster.equalsIgnoreCase("yes")){
                 buf = ".........sample........".getBytes();
                 for(String add: NodeInfo.addresses){
@@ -59,6 +68,7 @@ public class UDPSocketServer{
             LOGGER.info("Exception caused: ", ex);
         }
     }
+
 
     public void close() throws SocketException {
         socket.close();
