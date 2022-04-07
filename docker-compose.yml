@@ -1,33 +1,5 @@
 version: "3"
 services:
-  react-app:
-    image: client
-    stdin_open: true
-    ports: 
-      - "3000:3000"
-    networks:
-      - servers-network
-  api-server:
-    image: java-docker
-    networks:
-      - db-app
-      - servers-network
-    depends_on:
-      - mongo
-    environment:
-      DB_HOST: mongo
-      DB_PORT: 27017
-      MASTER: "yes"
-    ports: 
-      - "8080:8080"
-  mongo:
-    image: mongo
-    networks:
-      - db-app
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
   api-server-1:
     image: java-docker
     networks:
@@ -38,15 +10,19 @@ services:
     environment:
       DB_HOST: mongo-1
       DB_PORT: 27017
-      MASTER: "no"
+      MASTER: "yes"
+      NODE_NO: 1
     ports: 
       - "8081:8080"
+    build:
+      context: ./backend
+      dockerfile: ./Dockerfile
   mongo-1:
     image: mongo
     networks:
       - db-app-1
     ports:
-      - "27018:27017"
+      - "27017:27017"
     volumes:
       - mongo-data-1:/data/db
   api-server-2:
@@ -60,6 +36,7 @@ services:
       DB_HOST: mongo-2
       DB_PORT: 27017
       MASTER: "no"
+      NODE_NO: 2
     ports: 
       - "8082:8080"
   mongo-2:
@@ -67,7 +44,7 @@ services:
     networks:
       - db-app-2
     ports:
-      - "27019:27017"
+      - "27018:27017"
     volumes:
       - mongo-data-2:/data/db
   api-server-3:
@@ -78,51 +55,33 @@ services:
     depends_on:
       - mongo-3
     environment:
-      DB_HOST: mongo
+      DB_HOST: mongo-3
       DB_PORT: 27017
-    ports:
+      MASTER: "no"
+      NODE_NO: 3
+    ports: 
       - "8083:8080"
   mongo-3:
     image: mongo
     networks:
       - db-app-3
     ports:
-      - "27020:27017"
+      - "27019:27017"
     volumes:
       - mongo-data-3:/data/db
-  api-server-4:
-    image: java-docker
-    networks:
-      - db-app-4
-      - servers-network
-    depends_on:
-      - mongo-4
-    environment:
-      DB_HOST: mongo
-      DB_PORT: 27017
-    ports:
-      - "8084:8080"
-  mongo-4:
-    image: mongo
-    networks:
-      - db-app-4
-    ports:
-      - "27021:27017"
-    volumes:
-      - mongo-data-4:/data/db
 networks:
-  db-app:
-    driver: bridge
   db-app-1:
     driver: bridge
   db-app-2:
     driver: bridge
+  db-app-3:
+    driver: bridge
   servers-network:
     driver: bridge
 volumes:
-  mongo-data:
-    driver: local
   mongo-data-1:
     driver: local
   mongo-data-2:
+    driver: local
+  mongo-data-3:
     driver: local

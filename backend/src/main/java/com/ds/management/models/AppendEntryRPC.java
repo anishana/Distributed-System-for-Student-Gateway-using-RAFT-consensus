@@ -1,5 +1,8 @@
 package com.ds.management.models;
 
+import lombok.Data;
+
+@Data
 public class AppendEntryRPC {
 
     private String sender_name;

@@ -1,39 +1,60 @@
 package com.ds.management.util;
+import com.ds.management.constants.NodeInfo;
+import com.ds.management.models.NodeState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.net.*;
 
 @Service
+@EnableAsync
 public class UDPSocketServer{
 
     private final static Logger LOGGER = LoggerFactory.getLogger(UDPSocketServer.class);
 
-    private byte[] buffer;
+    private byte[] buf;
     private InetAddress address;
     private DatagramSocket socket;
 
-    public UDPSocketServer() throws SocketException {
+    @Value("${is.Master}")
+    private String isMaster;
+
+    @Value("${node.value}")
+    private Integer val;
+
+    public UDPSocketServer() throws SocketException, UnknownHostException {
+        buf= new byte[256];
         socket= new DatagramSocket();
+        address= InetAddress.getByName("localhost");
+        NodeState.getNodeState().setNodeValue(val);
+        LOGGER.info("SERVER: "+ NodeState.getNodeState());
     }
 
-    @Scheduled(fixedRate = 1000)
+    @Async
+    @Scheduled(fixedRate = 150)
     public void sendEcho() {
         try {
-            String msg = "Hello World";
-            System.out.println("S: " + msg);
-            buffer = msg.getBytes();
-            address= InetAddress.getByName("localhost");
-            DatagramSocket socket= new DatagramSocket();
-            DatagramPacket packet_exchange = new DatagramPacket(buffer, buffer.length, address, 6060);
-            socket.send(packet_exchange);
-            //packet_exchange = new DatagramPacket(buffer, buffer.length);
-            //udpSocket.receive(packet_exchange);
-            //String received = new String(packet_exchange.getData(), 0, packet_exchange.getLength());
-            //return received;
-        }
+            if(isMaster.equalsIgnoreCase("yes")){
+                buf = ".........sample........".getBytes();
+                for(String add: NodeInfo.addresses){
+                    address= InetAddress.getByName(add);
+                    //LOGGER.info("PRINTING ADDRESS: "+address.toString());
+                    DatagramPacket packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
+                    //LOGGER.info("SERVER: BEFORE: " + packet.getData());
+                    socket.send(packet);
+                    //LOGGER.info("SERVER: AFTER", packet.getData());
+                }
+                /*DatagramPacket packet = new DatagramPacket(buf, buf.length);
+                socket.receive(packet);
+                String received = new String(packet.getData(), 0, packet.getLength());
+                //LOGGER.info("SERVER: RECEIVED: ", received);*/
+            }
+       }
         catch (Exception ex){
             LOGGER.info("Exception caused: ", ex);
         }
