@@ -52,7 +52,7 @@ public class UDPSocketServer{
     public void sendEcho() {
         try {
 //                LOGGER.info("Sending");
-//            if(isMaster.equalsIgnoreCase("yes")){
+            if(isMaster.equalsIgnoreCase("yes")){
                 buf = ".........sample........".getBytes();
                 for(String add: NodeInfo.addresses){
                     address= InetAddress.getByName(add);
@@ -66,7 +66,7 @@ public class UDPSocketServer{
                 socket.receive(packet);
                 String received = new String(packet.getData(), 0, packet.getLength());
                 //LOGGER.info("SERVER: RECEIVED: ", received);*/
-//            }
+            }
        }
         catch (Exception ex){
             LOGGER.info("Exception caused: ", ex);

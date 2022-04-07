@@ -14,7 +14,7 @@ public class NodeInfo {
 
     public static Integer TERM=0;
 
-//    public static List<String> addresses= new ArrayList<String>(List.of(new String[]{"api-server-1", "api-server-2", "api-server-3"}));
-    public static List<String> addresses= new ArrayList<String>(List.of(new String[]{"localhost"}));
+    public static List<String> addresses= new ArrayList<String>(List.of(new String[]{"api-server-1", "api-server-2", "api-server-3"}));
+//    public static List<String> addresses= new ArrayList<String>(List.of(new String[]{"localhost"}));
 
 }
