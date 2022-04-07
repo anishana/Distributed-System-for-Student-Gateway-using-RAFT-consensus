@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -27,9 +28,10 @@ public class ManagementApplication {
     public static void main(String[] args) {
 
         try {
-            SpringApplication.run(ManagementApplication.class, args);
-            UDPSocketListener udpSocketListener= new UDPSocketListener();
+            ConfigurableApplicationContext appContext = SpringApplication.run(ManagementApplication.class, args);
+//            UDPSocketListener udpSocketListener= new UDPSocketListener();
 //            CompletableFuture<Void> completableFuture= CompletableFuture.runAsync(udpSocketListener);
+            UDPSocketListener udpSocketListener = appContext.getBean(UDPSocketListener.class);
 
             CompletableFuture<Void> completableFuture1 = CompletableFuture.runAsync(new Runnable() {
                 @Override

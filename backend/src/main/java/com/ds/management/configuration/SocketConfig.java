@@ -14,7 +14,8 @@ public class SocketConfig {
 
     @Bean
     public DatagramSocket socket() throws SocketException {
-//        DatagramSocket socket= new DatagramSocket(NodeInfo.port);
-        return null;
+        DatagramSocket socket= new DatagramSocket(6060);
+        LOGGER.info("SocketConfig.socket Info: "+socket.getLocalPort());
+        return socket;
     }
 }

@@ -30,6 +30,9 @@ public class UDPSocketServer{
     @Value("${node.value}")
     private Integer val;
 
+    @Autowired
+    private SocketConfig socketConfig;
+
     public UDPSocketServer() throws SocketException, UnknownHostException {
         buf= new byte[256];
         address= InetAddress.getByName("localhost");
@@ -37,10 +40,11 @@ public class UDPSocketServer{
 
     @PostConstruct
     public void setNodeState() throws SocketException {
-//        socket= socketConfig.socket();
-        socket= new DatagramSocket();
+        socket= socketConfig.socket();
+//        socket= new DatagramSocket();
         NodeState.getNodeState().setNodeValue(val);
         LOGGER.info("SERVER: "+ NodeState.getNodeState());
+        LOGGER.info("UDPSocketServer.socket Info: "+socket.getLocalPort());
     }
 
     @Async
@@ -48,7 +52,7 @@ public class UDPSocketServer{
     public void sendEcho() {
         try {
 //                LOGGER.info("Sending");
-            if(isMaster.equalsIgnoreCase("yes")){
+//            if(isMaster.equalsIgnoreCase("yes")){
                 buf = ".........sample........".getBytes();
                 for(String add: NodeInfo.addresses){
                     address= InetAddress.getByName(add);
@@ -62,7 +66,7 @@ public class UDPSocketServer{
                 socket.receive(packet);
                 String received = new String(packet.getData(), 0, packet.getLength());
                 //LOGGER.info("SERVER: RECEIVED: ", received);*/
-            }
+//            }
        }
         catch (Exception ex){
             LOGGER.info("Exception caused: ", ex);

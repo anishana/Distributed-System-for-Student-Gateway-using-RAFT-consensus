@@ -8,13 +8,13 @@ import com.ds.management.models.RequestVoteRPC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.net.*;
 import java.net.InetAddress;
 
-//@Service
+@Component
 public class UDPSocketListener {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(UDPSocketListener.class);
@@ -24,19 +24,21 @@ public class UDPSocketListener {
     private DatagramSocket socket;
     private NodeState nodeState;
 
-
+    @Autowired
+    private SocketConfig socketConfig;
     public UDPSocketListener() throws SocketException {
-        socket= new DatagramSocket(NodeInfo.port);
+//        socket= new DatagramSocket(NodeInfo.port);
 //        socket.setSoTimeout(nodeState.getTimeout());
 //        LOGGER.info("node: "+nodeState.toString());
     }
 
     @PostConstruct
     public void setNodeState() throws SocketException {
-//        socket= socketConfig.socket();
+        socket= socketConfig.socket();
 //        socket= new DatagramSocket(NodeInfo.port);
         nodeState= NodeState.getNodeState();
         socket.setSoTimeout(nodeState.getTimeout());
+        LOGGER.info("socket Info: "+socket.getLocalPort());
 
     }
 
