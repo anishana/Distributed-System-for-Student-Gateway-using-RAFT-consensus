@@ -27,7 +27,7 @@ public class NodeState {
     private String currentLeader;
 
     private NodeState(){
-        int base= 10000;
+        int base= 5000;
         Random random= new Random();
         heartbeat= random.nextInt(5000)+ base;
         timeout= this.heartbeat*2;

@@ -38,7 +38,7 @@ public class UDPSocketServer{
     private SocketConfig socketConfig;
 
     public UDPSocketServer() throws UnknownHostException {
-        buf= new byte[1024];
+        buf= new byte[10240];
         address= InetAddress.getByName("localhost");
     }
 
@@ -52,7 +52,7 @@ public class UDPSocketServer{
     }
 
     @Async
-    @Scheduled(fixedRate = 30000)
+    @Scheduled(fixedRate = 5000)
     public void sendEcho() {
         try {
             if(nodeState.getIsLeader() == true){
@@ -75,7 +75,7 @@ public class UDPSocketServer{
             }
        }
         catch (Exception ex){
-            LOGGER.info("Exception caused: ", ex);
+            LOGGER.info("Exception caused in send echo: ", ex);
         }
     }
 

@@ -24,7 +24,7 @@ public class UDPSocketListener {
     private final static Logger LOGGER = LoggerFactory.getLogger(UDPSocketListener.class);
 
     private boolean isRunning;
-    private byte[] buf = new byte[1024];
+    private byte[] buf = new byte[10240];
     private DatagramSocket socket;
     private NodeState nodeState;
 
@@ -44,6 +44,7 @@ public class UDPSocketListener {
 
     public void listen() {
         isRunning = true;
+        String receivedMessage= "";
         while (isRunning) {
             try {
                 DatagramPacket packet_received = new DatagramPacket(buf, buf.length);
@@ -53,7 +54,7 @@ public class UDPSocketListener {
                     LOGGER.info("ARE YOU HEREEEEEE? STUPID FUCK!!");
                     getReadyForElection();
                 }
-                String receivedMessage = new String(packet_received.getData(), 0, packet_received.getLength());
+                receivedMessage = new String(packet_received.getData(), 0, packet_received.getLength());
 //                LOGGER.info("Message received: "+receivedMessage);
                 understandMessage(receivedMessage, packet_received);
 //                InetAddress from_address = packet_received.getAddress();
@@ -62,29 +63,28 @@ public class UDPSocketListener {
 //                socket.send(packet);
             }
             catch (Exception ex) {
-                LOGGER.info("Exception: ", ex);
+                LOGGER.info("\nException INSIDE LISTEN MESSAGE: \n"+receivedMessage+"\n "+ex.getMessage());
             }
         }
         socket.close();
     }
 
     public void understandMessage(String message, DatagramPacket receivedPacket){
-        JSONObject jsonObject= new JSONObject(message);
-        int type= Integer.parseInt(jsonObject.get("type").toString());
-        if(type== NodeConstants.REQUEST.HEARTBEAT.ordinal()){
-            LOGGER.info("Heartbeat.");
-        }
-        else if (type== NodeConstants.REQUEST.VOTE_REQUEST.ordinal()){
-            LOGGER.info("Vote Request.");
-            voteRequested(message, receivedPacket);
-        }
-        else if (type == NodeConstants.REQUEST.VOTE_RESPONSE.ordinal()){
-            LOGGER.info("!!Vote Response!!");
-            updateVoteResponse(message);
-        }
-        else if(type == NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.ordinal()){
-            LOGGER.info("!!ACKNOWLEDGE LEADER!!");
-            setLeader(message);
+        if(!message.equalsIgnoreCase("")) {
+            JSONObject jsonObject = new JSONObject(message);
+            int type = Integer.parseInt(jsonObject.get("type").toString());
+            if (type == NodeConstants.REQUEST.HEARTBEAT.ordinal()) {
+                LOGGER.info("Heartbeat.");
+            } else if (type == NodeConstants.REQUEST.VOTE_REQUEST.ordinal()) {
+                LOGGER.info("Vote Request.");
+                voteRequested(message, receivedPacket);
+            } else if (type == NodeConstants.REQUEST.VOTE_RESPONSE.ordinal()) {
+                LOGGER.info("!!Vote Response!!");
+                updateVoteResponse(message);
+            } else if (type == NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.ordinal()) {
+                LOGGER.info("!!ACKNOWLEDGE LEADER!!");
+                setLeader(message);
+            }
         }
     }
 
