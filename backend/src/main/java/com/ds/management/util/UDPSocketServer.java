@@ -1,7 +1,10 @@
 package com.ds.management.util;
 import com.ds.management.configuration.SocketConfig;
+import com.ds.management.constants.NodeConstants;
 import com.ds.management.constants.NodeInfo;
+import com.ds.management.models.AppendEntryRPC;
 import com.ds.management.models.NodeState;
+import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 
 @Service
 @EnableAsync
@@ -23,49 +27,52 @@ public class UDPSocketServer{
     private byte[] buf;
     private InetAddress address;
     private DatagramSocket socket;
+    private NodeState nodeState;
 
     @Value("${is.Master}")
     private String isMaster;
 
     @Value("${node.value}")
-    private Integer val;
+    private String val;
 
     @Autowired
     private SocketConfig socketConfig;
 
-    public UDPSocketServer() throws SocketException, UnknownHostException {
-        buf= new byte[256];
+    public UDPSocketServer() throws UnknownHostException {
+        buf= new byte[1024];
         address= InetAddress.getByName("localhost");
     }
 
     @PostConstruct
     public void setNodeState() throws SocketException {
         socket= socketConfig.socket();
-//        socket= new DatagramSocket();
-        NodeState.getNodeState().setNodeValue(val);
+        nodeState= NodeState.getNodeState();
+        nodeState.setNodeValue(val);
         LOGGER.info("SERVER: "+ NodeState.getNodeState());
         LOGGER.info("UDPSocketServer.socket Info: "+socket.getLocalPort());
     }
 
     @Async
-    @Scheduled(fixedRate = 150)
+    @Scheduled(fixedRate = 10000)
     public void sendEcho() {
         try {
-//                LOGGER.info("Sending");
             if(isMaster.equalsIgnoreCase("yes")){
-                buf = ".........sample........".getBytes();
+                String message_to_send= createHeartbeatMessage();
+                buf= message_to_send.getBytes(StandardCharsets.UTF_8);
                 for(String add: NodeInfo.addresses){
                     address= InetAddress.getByName(add);
-                    //LOGGER.info("PRINTING ADDRESS: "+address.toString());
-                    DatagramPacket packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
-                    //LOGGER.info("SERVER: BEFORE: " + packet.getData());
+                    DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 6060);
+                    LOGGER.info("SERVER: BEFORE: " + message_to_send);
                     socket.send(packet);
                     //LOGGER.info("SERVER: AFTER", packet.getData());
                 }
-                /*DatagramPacket packet = new DatagramPacket(buf, buf.length);
+                /*
+                TO BE ADDED WHILE IMPLEMENTING APPEND RPC
+                DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
                 String received = new String(packet.getData(), 0, packet.getLength());
-                //LOGGER.info("SERVER: RECEIVED: ", received);*/
+                LOGGER.info("SERVER: RECEIVED: ", received);
+                */
             }
        }
         catch (Exception ex){
@@ -73,6 +80,15 @@ public class UDPSocketServer{
         }
     }
 
+    public String createHeartbeatMessage(){
+        AppendEntryRPC heartbeat= new AppendEntryRPC();
+        heartbeat.setLeaderId(NodeState.getNodeState().getNodeValue());
+        heartbeat.setType(NodeConstants.REQUEST.HEARTBEAT);
+        heartbeat.setTerm(nodeState.getTerm());
+        Gson gson= new Gson();
+        String message= gson.toJson(heartbeat);
+        return message;
+    }
 
     public void close() throws SocketException {
         socket.close();

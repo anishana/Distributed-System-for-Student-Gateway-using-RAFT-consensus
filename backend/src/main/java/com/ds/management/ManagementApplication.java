@@ -1,10 +1,8 @@
 package com.ds.management;
 
 import com.ds.management.util.UDPSocketListener;
-import com.ds.management.util.UDPSocketServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -21,18 +19,13 @@ import java.util.concurrent.CompletableFuture;
 @EnableScheduling
 public class ManagementApplication {
 
-//    @Autowired
-//    private static UDPSocketListener udpSocketListener;
     private final static Logger LOGGER = LoggerFactory.getLogger(ManagementApplication.class);
 
     public static void main(String[] args) {
 
         try {
             ConfigurableApplicationContext appContext = SpringApplication.run(ManagementApplication.class, args);
-//            UDPSocketListener udpSocketListener= new UDPSocketListener();
-//            CompletableFuture<Void> completableFuture= CompletableFuture.runAsync(udpSocketListener);
             UDPSocketListener udpSocketListener = appContext.getBean(UDPSocketListener.class);
-
             CompletableFuture<Void> completableFuture1 = CompletableFuture.runAsync(new Runnable() {
                 @Override
                 public void run() {

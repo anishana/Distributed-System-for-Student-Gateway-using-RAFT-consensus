@@ -3,9 +3,6 @@ package com.ds.management.constants;
 public class NodeConstants {
     public enum SERVER_STATE{FOLLOWER, CANDIDATE, LEADER};
 
-    public enum CLIENT_REQUEST{HEARTBEAT, VOTE};
+    public enum REQUEST{HEARTBEAT, VOTE_REQUEST, VOTE_RESPONSE};
 
-    public enum SERVER_REQUEST{HEARTBEAT, APPEND_ENTRY};
-
-};
-
+}
