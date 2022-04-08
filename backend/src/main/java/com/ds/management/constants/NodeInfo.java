@@ -11,7 +11,7 @@ public class NodeInfo {
 
     public static String NODE_VALUE = "";
 
-    public static List<String> addresses = new ArrayList<String>(List.of(new String[]{"Node1", "Node2", "Node3"}));
+    public static List<String> addresses = new ArrayList<String>(List.of(new String[]{"Node1", "Node2", "Node3", "Node4", "Node5"}));
 //    public static List<String> addresses= new ArrayList<String>(List.of(new String[]{"localhost"}));
 
     public static Integer totalNodes = 5;

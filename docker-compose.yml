@@ -72,6 +72,52 @@ services:
       - "27019:27017"
     volumes:
       - mongo-data-3:/data/db
+  node4:
+    container_name: Node4
+    image: java-docker
+    networks:
+      - db-app-4
+      - servers-network
+    depends_on:
+      - mongo-4
+    environment:
+      DB_HOST: mongo-4
+      DB_PORT: 27017
+      MASTER: "no"
+      NODE_NO: 4
+    ports: 
+      - "8084:8080"
+  mongo-4:
+    image: mongo
+    networks:
+      - db-app-4
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongo-data-4:/data/db
+  node5:
+    container_name: Node5
+    image: java-docker
+    networks:
+      - db-app-5
+      - servers-network
+    depends_on:
+      - mongo-5
+    environment:
+      DB_HOST: mongo-5
+      DB_PORT: 27017
+      MASTER: "no"
+      NODE_NO: 5
+    ports: 
+      - "8085:8080"
+  mongo-5:
+    image: mongo
+    networks:
+      - db-app-5
+    ports:
+      - "27021:27017"
+    volumes:
+      - mongo-data-5:/data/db
   controller:
     container_name: Controller
     build: Controller/.
@@ -82,12 +128,18 @@ services:
       - node1
       - node2
       - node3
+      - node4
+      - node5
 networks:
   db-app-1:
     driver: bridge
   db-app-2:
     driver: bridge
   db-app-3:
+    driver: bridge
+  db-app-4:
+    driver: bridge
+  db-app-5:
     driver: bridge
   servers-network:
     driver: bridge
@@ -97,4 +149,8 @@ volumes:
   mongo-data-2:
     driver: local
   mongo-data-3:
+    driver: local
+  mongo-data-4:
+    driver: local
+  mongo-data-5:
     driver: local

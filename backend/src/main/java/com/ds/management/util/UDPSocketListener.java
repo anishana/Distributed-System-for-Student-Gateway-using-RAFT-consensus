@@ -19,6 +19,7 @@ import java.net.*;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
+import java.util.regex.Matcher;
 
 
 @Component
@@ -73,7 +74,7 @@ public class UDPSocketListener {
 //                DatagramPacket packetToBeSent = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
 //                socket.send(packet);
             } catch (Exception ex) {
-                LOGGER.info("\nException INSIDE LISTEN MESSAGE: \n" + receivedMessage + "\n " , ex);
+                LOGGER.info("\nException INSIDE LISTEN MESSAGE: \n" + receivedMessage + "\n ", ex);
             }
         }
         socket.close();
@@ -115,12 +116,15 @@ public class UDPSocketListener {
                 } else if (type == NodeConstants.REQUEST.SHUTDOWN.ordinal()) {
                     LOGGER.info("Got shutdown request.");
                     shutDownNode();
+                } else if (type == NodeConstants.REQUEST.SHUTDOWN_PROPAGATE.ordinal()) {
+                    LOGGER.info("Got shutdown propagate request.");
+                    shutdownPropagate(jsonObject.has("nodeId") ? jsonObject.getInt("nodeId") : -1);
                 }
             }
 
         } catch (Exception e) {
 //            LOGGER.error("message: " + message);
-            LOGGER.error("parseMessage.Exception: " + e.getMessage());
+            LOGGER.error("parseMessage.Exception: ", e);
         }
 
     }
@@ -278,7 +282,46 @@ public class UDPSocketListener {
     public void shutDownNode() {
         if (!socket.isClosed()) {
             LOGGER.info("Closing socket " + nodeVal);
+            JSONObject obj = new JSONObject();
+            obj.put("type", NodeConstants.REQUEST.SHUTDOWN_PROPAGATE.ordinal());
+            obj.put("request", NodeConstants.REQUEST.SHUTDOWN_PROPAGATE.name());
+            obj.put("nodeId", nodeVal);
+            String message = obj.toString();
+            buf = message.getBytes(StandardCharsets.UTF_8);
+            DatagramPacket new_packet;
+            try {
+                for (String add : NodeInfo.addresses) {
+                    InetAddress address = InetAddress.getByName(add);
+                    new_packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
+                    socket.send(new_packet);
+                }
+            } catch (Exception exception) {
+                LOGGER.info("EXCEPTION!! ACKNOWLEDGE THE WINNER!!!!");
+            }
             socket.close();
+
+            isRunning = false;
         }
+    }
+
+
+    public void shutdownPropagate(Integer nodeId) {
+        if (NodeInfo.totalNodes > 1) {
+            String shutdownAddress = "";
+            for (String removedAddress : NodeInfo.addresses) {
+                if (removedAddress.equalsIgnoreCase("Node" + nodeId))
+                    shutdownAddress = "Node" + nodeId;
+//                    NodeInfo.addresses.remove("Node"+nodeId);
+
+            }
+            NodeInfo.totalNodes--;
+            NodeInfo.majorityNodes = (int) Math.ceil(NodeInfo.totalNodes / 2.0);
+            NodeInfo.addresses.remove(shutdownAddress);
+        }
+        LOGGER.info("shutdownPropagate. NodeInfo.addresses: " + NodeInfo.addresses.toString());
+
+        /*else {
+
+        }*/
     }
 }

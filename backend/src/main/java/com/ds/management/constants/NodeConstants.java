@@ -13,7 +13,8 @@ public class NodeConstants {
         CONVERT_FOLLOWER,
         LEADER_INFO,
         ACKNOWLEDGE_LEADER_INFO,
-        SHUTDOWN
+        SHUTDOWN,
+        SHUTDOWN_PROPAGATE
     }
 
     public final static String LEADER_KEY = "LEADER";

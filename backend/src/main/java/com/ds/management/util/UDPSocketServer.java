@@ -60,7 +60,9 @@ public class UDPSocketServer {
     @Scheduled(fixedRate = 1000)
     public void sendEcho() {
         try {
-            if (nodeState.getIsLeader()) {
+
+//            LOGGER.info("nodeState.getIsLeader():"+nodeState.getIsLeader()+". socket.isClosed():"+socket.isClosed());
+            if (nodeState.getIsLeader() && !socket.isClosed()) {
                 String message_to_send = createHeartbeatMessage();
                 buf = message_to_send.getBytes(StandardCharsets.UTF_8);
                 for (String add : NodeInfo.addresses) {
