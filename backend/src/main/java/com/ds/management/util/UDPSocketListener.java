@@ -38,7 +38,7 @@ public class UDPSocketListener {
     public void setNodeState() throws SocketException {
         socket= socketConfig.socket();
         nodeState= NodeState.getNodeState();
-        socket.setSoTimeout(15000);
+        socket.setSoTimeout(nodeState.getTimeout());
         LOGGER.info("socket Info: "+socket.getLocalPort());
     }
 
@@ -81,6 +81,10 @@ public class UDPSocketListener {
         else if (type == NodeConstants.REQUEST.VOTE_RESPONSE.ordinal()){
             LOGGER.info("!!Vote Response!!");
             updateVoteResponse(message);
+        }
+        else if(type == NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.ordinal()){
+            LOGGER.info("!!ACKNOWLEDGE LEADER!!");
+            setLeader(message);
         }
     }
 
@@ -176,8 +180,44 @@ public class UDPSocketListener {
             if(nodeState.getNumberOfVotes()>=NodeInfo.majorityNodes){
                 LOGGER.info("THE WINNER IS: "+nodeState.getNodeValue());
                 //TO DO-> write a function which shall
+                //acknowledge the winner
+                acknowledgeLeader();
             }
         }
+    }
+
+    public void acknowledgeLeader(){
+        JSONObject obj= new JSONObject();
+        obj.put("type", NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.ordinal());
+        obj.put("term", nodeState.getTerm());
+        obj.put("leaderId", nodeState.getNodeValue());
+        String message= obj.toString();
+        buf= message.getBytes(StandardCharsets.UTF_8);
+        DatagramPacket new_packet;
+        try {
+            for (String add : NodeInfo.addresses) {
+                InetAddress address = InetAddress.getByName(add);
+                new_packet = new DatagramPacket(buf, buf.length, address, 6060);
+                socket.send(new_packet);
+            }
+        }
+        catch (Exception exception){
+            LOGGER.info("EXCEPTION!! ACKNOWLEDGE THE WINNER!!!!");
+        }
+    }
+
+    public void setLeader(String message){
+        JSONObject object= new JSONObject(message);
+        String leader= object.get("leaderId").toString();
+        Integer term= Integer.parseInt(object.get("term").toString());
+        if(leader.equalsIgnoreCase(nodeState.getNodeValue())){
+            nodeState.setIsLeader(true);
+        }else{
+            nodeState.setIsLeader(false);
+        }
+        nodeState.setCurrentLeader(leader);
+        nodeState.setTerm(term);
+        LOGGER.info("Current node: "+nodeState.getNodeValue()+ "; leader : "+ nodeState.getCurrentLeader());
     }
 
 }

@@ -55,7 +55,7 @@ public class UDPSocketServer{
     @Scheduled(fixedRate = 30000)
     public void sendEcho() {
         try {
-            if(isMaster.equalsIgnoreCase("yes")){
+            if(nodeState.getIsLeader() == true){
                 String message_to_send= createHeartbeatMessage();
                 buf= message_to_send.getBytes(StandardCharsets.UTF_8);
                 for(String add: NodeInfo.addresses){

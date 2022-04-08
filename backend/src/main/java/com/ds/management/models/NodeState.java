@@ -23,6 +23,8 @@ public class NodeState {
     private Integer term;
     private Integer numberOfVotes;
     private Set<String> votedBy;
+    private Boolean isLeader;
+    private String currentLeader;
 
     private NodeState(){
         int base= 10000;
@@ -36,6 +38,8 @@ public class NodeState {
         term= 0;
         votedBy= new HashSet<>();
         numberOfVotes=0;
+        isLeader= false;
+        currentLeader= "";
     }
 
     public static NodeState getNodeState(){
