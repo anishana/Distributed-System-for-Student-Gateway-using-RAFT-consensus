@@ -1,5 +1,7 @@
 package com.ds.management.util;
+
 import com.ds.management.configuration.SocketConfig;
+import com.ds.management.constants.MessageType;
 import com.ds.management.constants.NodeConstants;
 import com.ds.management.constants.NodeInfo;
 import com.ds.management.models.NodeState;
@@ -13,13 +15,16 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+
 import javax.annotation.PostConstruct;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 
+
+
 @Service
 @EnableAsync
-public class UDPSocketServer{
+public class UDPSocketServer {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(UDPSocketServer.class);
 
@@ -38,29 +43,29 @@ public class UDPSocketServer{
     private SocketConfig socketConfig;
 
     public UDPSocketServer() throws UnknownHostException {
-        buf= new byte[10240];
-        address= InetAddress.getByName("localhost");
+        buf = new byte[102400];
+        address = InetAddress.getByName("localhost");
     }
 
     @PostConstruct
     public void setNodeState() throws SocketException {
-        socket= socketConfig.socket();
-        nodeState= NodeState.getNodeState();
+        socket = socketConfig.socket();
+        nodeState = NodeState.getNodeState();
         nodeState.setNodeValue(val);
-        LOGGER.info("SERVER: "+ NodeState.getNodeState());
-        LOGGER.info("UDPSocketServer.socket Info: "+socket.getLocalPort());
+        LOGGER.info("SERVER: " + NodeState.getNodeState());
+        LOGGER.info("UDPSocketServer.socket Info: " + socket.getLocalPort());
     }
 
     @Async
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRate = 1000)
     public void sendEcho() {
         try {
-            if(nodeState.getIsLeader() == true){
-                String message_to_send= createHeartbeatMessage();
-                buf= message_to_send.getBytes(StandardCharsets.UTF_8);
-                for(String add: NodeInfo.addresses){
-                    address= InetAddress.getByName(add);
-                    DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 6060);
+            if (nodeState.getIsLeader()) {
+                String message_to_send = createHeartbeatMessage();
+                buf = message_to_send.getBytes(StandardCharsets.UTF_8);
+                for (String add : NodeInfo.addresses) {
+                    address = InetAddress.getByName(add);
+                    DatagramPacket packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
                     //LOGGER.info("SERVER: BEFORE: " + message_to_send);
                     socket.send(packet);
                     //LOGGER.info("SERVER: AFTER", packet.getData());
@@ -73,13 +78,12 @@ public class UDPSocketServer{
                 LOGGER.info("SERVER: RECEIVED: ", received);
                 */
             }
-       }
-        catch (Exception ex){
+        } catch (Exception ex) {
             LOGGER.info("Exception caused in send echo: ", ex);
         }
     }
 
-    public String createHeartbeatMessage(){
+    public String createHeartbeatMessage() {
         /*
         AppendEntryRPC heartbeat= new AppendEntryRPC();
         heartbeat.setLeaderId(NodeState.getNodeState().getNodeValue());
@@ -89,11 +93,13 @@ public class UDPSocketServer{
         String message= gson.toJson(heartbeat);
         return message;
         */
-        JSONObject jsonObject= new JSONObject();
+        JSONObject jsonObject = new JSONObject();
         jsonObject.put("leaderId", nodeState.getNodeValue());
-        jsonObject.put("type", NodeConstants.REQUEST.HEARTBEAT.ordinal());
+//        jsonObject.put("type", NodeConstants.REQUEST.HEARTBEAT.ordinal());
+        jsonObject.put("request", NodeConstants.REQUEST.HEARTBEAT.name());
         jsonObject.put("term", nodeState.getTerm());
-        String message= jsonObject.toString();
+        String message = jsonObject.toString();
+        LOGGER.info("Sending heartbeat: " + message);
         return message;
     }
 

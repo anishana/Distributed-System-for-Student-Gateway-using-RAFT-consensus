@@ -1,5 +1,6 @@
 package com.ds.management.configuration;
 
+import com.ds.management.constants.NodeInfo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import java.net.DatagramSocket;
@@ -12,7 +13,7 @@ public class SocketConfig {
 
     @Bean
     public DatagramSocket socket() throws SocketException {
-        DatagramSocket socket= new DatagramSocket(6060);
+        DatagramSocket socket= new DatagramSocket(NodeInfo.port);
         LOGGER.info("SocketConfig.socket Info: "+socket.getLocalPort());
         return socket;
     }

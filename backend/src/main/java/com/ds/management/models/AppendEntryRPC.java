@@ -6,12 +6,12 @@ import lombok.Data;
 import java.util.List;
 
 /*
-* leaderId: ID of the leader
-* Entries [] : Log entries to store (Empty for heartbeats)
-* prevLogIndex: index of the log entry preceding new entries.
-* prevLogTerm : term of prevLogIndex entry
-*
-* */
+ * leaderId: ID of the leader
+ * Entries [] : Log entries to store (Empty for heartbeats)
+ * prevLogIndex: index of the log entry preceding new entries.
+ * prevLogTerm : term of prevLogIndex entry
+ *
+ * */
 @Data
 public class AppendEntryRPC {
 
