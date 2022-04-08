@@ -1,13 +1,14 @@
 package com.ds.management.models;
 
-import com.ds.management.constants.NodeConstants;
 import lombok.Data;
 
 @Data
 public class ResponseVoteRPC {
 
-    private NodeConstants.REQUEST type;
-    private String nodeValue;
+    private Integer type;
+    private String votedBy;
+    private String votedFor;
     private Boolean hasVoted;
+    private Integer term;
 
 }

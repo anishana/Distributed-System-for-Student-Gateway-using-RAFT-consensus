@@ -12,7 +12,7 @@ To be added:
 @Data
 public class RequestVoteRPC {
 
-    private NodeConstants.REQUEST type;
+    private Integer type;
     private String candidateId;
     private Integer term;
 
