@@ -15,5 +15,6 @@ public class RequestVoteRPC {
     private Integer type;
     private String candidateId;
     private Integer term;
+    private Integer candidate;
 
 }

@@ -3,7 +3,9 @@ package com.ds.management.util;
 import com.ds.management.configuration.SocketConfig;
 import com.ds.management.constants.NodeConstants;
 import com.ds.management.constants.NodeInfo;
+import com.ds.management.models.AppendEntryRPC;
 import com.ds.management.models.NodeState;
+import com.google.gson.Gson;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +55,7 @@ public class UDPSocketServer {
     }
 
     @Async
-    @Scheduled(fixedRate = 1500)
+    @Scheduled(fixedRate = 150)
     public void sendEcho() {
         try {
             if (nodeState.getIsLeader() && !socket.isClosed()) {
@@ -73,11 +75,16 @@ public class UDPSocketServer {
     }
 
     public String createHeartbeatMessage() {
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("leaderId", nodeState.getNodeValue());
-        jsonObject.put("type", NodeConstants.REQUEST.HEARTBEAT.ordinal());
-        jsonObject.put("term", nodeState.getTerm());
-        String message = jsonObject.toString();
+//        JSONObject jsonObject = new JSONObject();
+        AppendEntryRPC apr = new AppendEntryRPC();
+        apr.setType(NodeConstants.REQUEST.HEARTBEAT);
+        apr.setLeaderId(nodeState.getNodeValue());
+        apr.setTerm(nodeState.getTerm());
+
+//        jsonObject.put("leaderId", nodeState.getNodeValue());
+//        jsonObject.put("type", NodeConstants.REQUEST.HEARTBEAT.ordinal());
+//        jsonObject.put("term", nodeState.getTerm());
+        String message = new Gson().toJson(apr);//jsonObject.toString();
         LOGGER.info("Sending heartbeat: " + message);
         return message;
     }
