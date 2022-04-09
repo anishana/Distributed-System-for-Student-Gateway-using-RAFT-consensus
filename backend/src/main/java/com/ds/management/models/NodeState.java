@@ -18,22 +18,23 @@ public class NodeState {
     private Integer heartbeat;
     private NodeConstants.SERVER_STATE server_state;
     private String nodeValue;
-    private Integer votedFor;
+    private String votedFor;
     private Boolean hasVotedInThisTerm;
     private Integer term;
     private Integer numberOfVotes;
     private Set<String> votedBy;
     private Boolean isLeader;
     private String currentLeader;
+    private String nodeName;
 
     private NodeState() {
-        int base = 5000;
         Random random = new Random();
-        heartbeat = random.nextInt(5000) + base;
+        heartbeat = random.nextInt(NodeInfo.base_rate) + NodeInfo.base_rate;
         timeout = this.heartbeat * 2;
         server_state = NodeConstants.SERVER_STATE.FOLLOWER;
         nodeValue = NodeInfo.NODE_VALUE;
-        votedFor = 0;
+        nodeName= "Node"+ nodeValue;
+        votedFor = "";
         hasVotedInThisTerm = false;
         term = 0;
         votedBy = new HashSet<>();

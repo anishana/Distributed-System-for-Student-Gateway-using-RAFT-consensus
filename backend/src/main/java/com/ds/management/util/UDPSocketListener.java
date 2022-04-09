@@ -12,14 +12,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.w3c.dom.Node;
 
 import javax.annotation.PostConstruct;
 import java.net.*;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
-import java.util.regex.Matcher;
+import java.util.Set;
 
 
 @Component
@@ -45,7 +44,8 @@ public class UDPSocketListener {
     public void setNodeState() throws SocketException {
         socket = socketConfig.socket();
         nodeState = NodeState.getNodeState();
-        socket.setSoTimeout(nodeState.getTimeout());
+        //socket.setSoTimeout(nodeState.getTimeout());
+        socket.setSoTimeout(15000);
         LOGGER.info("socket Info: " + socket.getLocalPort());
 
         LOGGER.info("Node Details: " + nodeState.toString());
@@ -60,19 +60,14 @@ public class UDPSocketListener {
                 try {
                     socket.receive(packet_received);
                     if (buf != null && buf.length > 0) {
+                        LOGGER.info("Length: "+packet_received.getLength());
                         receivedMessage = new String(packet_received.getData(), 0, packet_received.getLength());
                         parseMessage(receivedMessage, packet_received);
                     }
                 } catch (SocketTimeoutException ex) {
-                    LOGGER.error("listen.Exception: ", ex);
-                    getReadyForElection();
+                    if(!nodeState.getIsLeader())
+                        getReadyForElection();
                 }
-
-//                LOGGER.info("Message received: "+receivedMessage);
-//                InetAddress from_address = packet_received.getAddress();
-//                int from_port = packet_received.getPort();
-//                DatagramPacket packetToBeSent = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
-//                socket.send(packet);
             } catch (Exception ex) {
                 LOGGER.info("\nException INSIDE LISTEN MESSAGE: \n" + receivedMessage + "\n ", ex);
             }
@@ -97,14 +92,13 @@ public class UDPSocketListener {
                         }
                     }
                     LOGGER.info("type:" + type);
-
                 }
                 if (type == NodeConstants.REQUEST.HEARTBEAT.ordinal()) {
-                    LOGGER.info("Got Heartbeat.");
+                    LOGGER.info("Heartbeat received at: "+message);
                 } else if (type == NodeConstants.REQUEST.VOTE_REQUEST.ordinal()) {
                     LOGGER.info("Got a Vote Request.");
                     voteRequested(message, receivedPacket);
-                } else if (type == NodeConstants.REQUEST.VOTE_RESPONSE.ordinal()) {
+                } else if (type == NodeConstants.REQUEST.VOTE_ACK.ordinal()) {
                     LOGGER.info("Got a Vote Response.");
                     updateVoteResponse(message);
                 } else if (type == NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.ordinal()) {
@@ -120,11 +114,16 @@ public class UDPSocketListener {
                     LOGGER.info("Got shutdown propagate request.");
                     shutdownPropagate(jsonObject.has("nodeId") ? jsonObject.getInt("nodeId") : -1);
                 }
+                else if(type== NodeConstants.REQUEST.CONVERT_FOLLOWER.ordinal()){
+                    convertFollower();
+                }
+                else if(type== NodeConstants.REQUEST.TIMEOUT.ordinal()){
+                    setTimeout();
+                }
             }
 
         } catch (Exception e) {
-//            LOGGER.error("message: " + message);
-            LOGGER.error("parseMessage.Exception: ", e);
+            LOGGER.error("parseMessage-------Exception: "+ e.getMessage()+ "\n message: "+message);
         }
 
     }
@@ -133,12 +132,12 @@ public class UDPSocketListener {
         try {
             if (nodeState.getServer_state() == NodeConstants.SERVER_STATE.FOLLOWER) {
                 updateNodeState();
-                String requestVoteRPC = createRequestVoteRPCObject();
-                buf = requestVoteRPC.getBytes(StandardCharsets.UTF_8);
+                buf = createRequestVoteRPCObject().getBytes(StandardCharsets.UTF_8);
                 DatagramPacket new_packet;
                 for (String add : NodeInfo.addresses) {
+                    if(add.equalsIgnoreCase(nodeState.getNodeName()))
+                        continue;
                     InetAddress address = InetAddress.getByName(add);
-                    LOGGER.info("VOTE REQ OBJECT: address: " + address.toString() + "; message: " + requestVoteRPC);
                     new_packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
                     socket.send(new_packet);
                 }
@@ -152,31 +151,33 @@ public class UDPSocketListener {
         int new_term = nodeState.getTerm() + 1;
         nodeState.setTerm(new_term);
         nodeState.setServer_state(NodeConstants.SERVER_STATE.CANDIDATE);
-        nodeState.setHasVotedInThisTerm(false);
-        nodeState.setNumberOfVotes(0);
-        nodeState.setVotedFor(-1);
-        nodeState.setVotedBy(new HashSet<>());
+        nodeState.setHasVotedInThisTerm(true);
+        nodeState.setNumberOfVotes(1);
+        nodeState.setVotedFor(nodeState.getNodeName());
+        Set<String> voteList= new HashSet<>();
+        voteList.add(nodeState.getNodeName());
+        nodeState.setVotedBy(voteList);
     }
 
     public String createRequestVoteRPCObject() {
         RequestVoteRPC voteObject = new RequestVoteRPC();
-        voteObject.setCandidateId(NodeState.getNodeState().getNodeValue());
+        voteObject.setCandidateId(nodeState.getNodeName());
         voteObject.setTerm(nodeState.getTerm());
         voteObject.setType(NodeConstants.REQUEST.VOTE_REQUEST.ordinal());
         JSONObject jsonObject = new JSONObject(voteObject);
         String voteRequestMessage = jsonObject.toString();
-        LOGGER.info("VOTE REQ OBJECT: " + voteRequestMessage);
+        LOGGER.info("VOTE REQ OBJECT BY:"+nodeState.getNodeName()+ "; message: " + voteRequestMessage);
         return voteRequestMessage;
     }
 
     public void voteRequested(String receivedMessage, DatagramPacket receivedPacket) {
         JSONObject obj = new JSONObject(receivedMessage);
         String candidateId = obj.get("candidateId").toString();
-        Integer request_term = Integer.parseInt(obj.get("term").toString());
+        Integer request_term = obj.getInt("term");
 
         ResponseVoteRPC response = new ResponseVoteRPC();
-        response.setType(NodeConstants.REQUEST.VOTE_RESPONSE.ordinal());
-        response.setVotedBy(nodeState.getNodeValue());
+        response.setType(NodeConstants.REQUEST.VOTE_ACK.ordinal());
+        response.setVotedBy(nodeState.getNodeName());
         response.setTerm(request_term);
 
         if (request_term > nodeState.getTerm()) {
@@ -192,6 +193,7 @@ public class UDPSocketListener {
                 response.setVotedFor(candidateId);
             }
         }
+        LOGGER.info("Vote requested by: "+candidateId+ "; Vote done by: "+nodeState.getNodeName()+"; Has it voted? "+response.getHasVoted());
         if (response.getHasVoted()) {
             JSONObject voteResponse = new JSONObject(response);
             buf = voteResponse.toString().getBytes(StandardCharsets.UTF_8);
@@ -207,19 +209,16 @@ public class UDPSocketListener {
     }
 
     public void updateVoteResponse(String message) {
-        LOGGER.info("VOTE RESPONSE: " + message);
         JSONObject object = new JSONObject(message);
         int requestTerm = Integer.parseInt(object.get("term").toString());
         String votedBy = object.get("votedBy").toString();
-        LOGGER.info("VOTED BY: " + votedBy + "; SET:" + nodeState.getVotedBy());
+        LOGGER.info("Vote request in term: "+requestTerm+ "; Vote done by: "+nodeState.getNodeName());
         if ((requestTerm == nodeState.getTerm()) && !(nodeState.getVotedBy().contains(votedBy))) {
             int currentVotes = nodeState.getNumberOfVotes();
             nodeState.setNumberOfVotes(currentVotes + 1);
             nodeState.getVotedBy().add(votedBy);
             if (nodeState.getNumberOfVotes() >= NodeInfo.majorityNodes) {
-                LOGGER.info("THE WINNER IS: " + nodeState.getNodeValue());
-                //TO DO-> write a function which shall
-                //acknowledge the winner
+                LOGGER.info("THE LEADER IS: " + nodeState.getNodeName()+ "; acknowledging other nodes.");
                 acknowledgeLeader();
             }
         }
@@ -229,7 +228,7 @@ public class UDPSocketListener {
         JSONObject obj = new JSONObject();
         obj.put("type", NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.ordinal());
         obj.put("term", nodeState.getTerm());
-        obj.put("leaderId", nodeState.getNodeValue());
+        obj.put("leaderId", nodeState.getNodeName());
         String message = obj.toString();
         buf = message.getBytes(StandardCharsets.UTF_8);
         DatagramPacket new_packet;
@@ -248,35 +247,22 @@ public class UDPSocketListener {
         JSONObject object = new JSONObject(message);
         String leader = object.get("leaderId").toString();
         Integer term = Integer.parseInt(object.get("term").toString());
-        if (leader.equalsIgnoreCase(nodeState.getNodeValue())) {
+        if (leader.equalsIgnoreCase(nodeState.getNodeName())) {
             nodeState.setIsLeader(true);
         } else {
             nodeState.setIsLeader(false);
         }
         nodeState.setCurrentLeader(leader);
         nodeState.setTerm(term);
-        LOGGER.info("Current node: " + nodeState.getNodeValue() + "; leader : " + nodeState.getCurrentLeader());
+        LOGGER.info("Setting leader for term: " + nodeState.getTerm() + "; leader is : " + leader);
     }
 
     public void sendLeaderInfo() {
         JSONObject obj = new JSONObject();
         obj.put("type", NodeConstants.REQUEST.ACKNOWLEDGE_LEADER_INFO.ordinal());
         obj.put("key", NodeConstants.LEADER_KEY);
-        obj.put("value", nodeState.getCurrentLeader());
-        obj.put("request", NodeConstants.REQUEST.ACKNOWLEDGE_LEADER_INFO.name());
-
-        String message = obj.toString();
-        buf = message.getBytes(StandardCharsets.UTF_8);
-        DatagramPacket new_packet;
-        try {
-            for (String add : NodeInfo.addresses) {
-                InetAddress address = InetAddress.getByName(add);
-                new_packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
-                socket.send(new_packet);
-            }
-        } catch (Exception exception) {
-            LOGGER.info("EXCEPTION!! ACKNOWLEDGE THE WINNER!!!!");
-        }
+        obj.put("value", nodeState.getNodeName());
+        LOGGER.info(obj.toString());
     }
 
     public void shutDownNode() {
@@ -299,7 +285,6 @@ public class UDPSocketListener {
                 LOGGER.info("EXCEPTION!! ACKNOWLEDGE THE WINNER!!!!");
             }
             socket.close();
-
             isRunning = false;
         }
     }
@@ -309,19 +294,31 @@ public class UDPSocketListener {
         if (NodeInfo.totalNodes > 1) {
             String shutdownAddress = "";
             for (String removedAddress : NodeInfo.addresses) {
-                if (removedAddress.equalsIgnoreCase("Node" + nodeId))
-                    shutdownAddress = "Node" + nodeId;
-//                    NodeInfo.addresses.remove("Node"+nodeId);
-
+                if (removedAddress.equalsIgnoreCase(nodeState.getNodeName()))
+                    shutdownAddress = nodeState.getNodeName();
             }
             NodeInfo.totalNodes--;
             NodeInfo.majorityNodes = (int) Math.ceil(NodeInfo.totalNodes / 2.0);
             NodeInfo.addresses.remove(shutdownAddress);
         }
         LOGGER.info("shutdownPropagate. NodeInfo.addresses: " + NodeInfo.addresses.toString());
+    }
 
-        /*else {
+    public void convertFollower(){
+        try{
+            nodeState.setServer_state(NodeConstants.SERVER_STATE.FOLLOWER);
+            nodeState.setIsLeader(false);
+        }catch (Exception exception){
+            LOGGER.info("Exception");
+        }
+    }
 
-        }*/
+    public void setTimeout(){
+        try{
+            getReadyForElection();
+        }
+        catch (Exception ex){
+            LOGGER.info("Exception while setting timeout and starting election.");
+        }
     }
 }

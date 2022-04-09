@@ -8,13 +8,14 @@ public class NodeConstants {
     public enum REQUEST {
         HEARTBEAT,
         VOTE_REQUEST,
-        VOTE_RESPONSE,
+        VOTE_ACK,
         ACKNOWLEDGE_LEADER,
         CONVERT_FOLLOWER,
         LEADER_INFO,
         ACKNOWLEDGE_LEADER_INFO,
         SHUTDOWN,
-        SHUTDOWN_PROPAGATE
+        SHUTDOWN_PROPAGATE,
+        TIMEOUT
     }
 
     public final static String LEADER_KEY = "LEADER";

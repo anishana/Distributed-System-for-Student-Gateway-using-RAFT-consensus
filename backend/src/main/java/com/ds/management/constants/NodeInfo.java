@@ -2,6 +2,7 @@ package com.ds.management.constants;
 
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,5 +18,7 @@ public class NodeInfo {
     public static Integer totalNodes = 5;
 
     public static Integer majorityNodes = 3;
+
+    public static final Integer base_rate= 1500;
 
 }
