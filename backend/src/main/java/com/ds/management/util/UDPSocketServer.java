@@ -1,7 +1,6 @@
 package com.ds.management.util;
 
 import com.ds.management.configuration.SocketConfig;
-import com.ds.management.constants.MessageType;
 import com.ds.management.constants.NodeConstants;
 import com.ds.management.constants.NodeInfo;
 import com.ds.management.models.NodeState;
@@ -14,13 +13,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
-
 import javax.annotation.PostConstruct;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
-
-
 
 @Service
 @EnableAsync
@@ -52,33 +47,25 @@ public class UDPSocketServer {
         socket = socketConfig.socket();
         nodeState = NodeState.getNodeState();
         nodeState.setNodeValue(val);
+        nodeState.setNodeName("Node"+val);
         LOGGER.info("SERVER: " + NodeState.getNodeState());
         LOGGER.info("UDPSocketServer.socket Info: " + socket.getLocalPort());
     }
 
     @Async
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate = 1500)
     public void sendEcho() {
         try {
-
-//            LOGGER.info("nodeState.getIsLeader():"+nodeState.getIsLeader()+". socket.isClosed():"+socket.isClosed());
             if (nodeState.getIsLeader() && !socket.isClosed()) {
                 String message_to_send = createHeartbeatMessage();
                 buf = message_to_send.getBytes(StandardCharsets.UTF_8);
                 for (String add : NodeInfo.addresses) {
+                    if(add.equalsIgnoreCase(nodeState.getNodeName()))
+                        continue;
                     address = InetAddress.getByName(add);
                     DatagramPacket packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
-                    //LOGGER.info("SERVER: BEFORE: " + message_to_send);
                     socket.send(packet);
-                    //LOGGER.info("SERVER: AFTER", packet.getData());
                 }
-                /*
-                TO BE ADDED WHILE IMPLEMENTING APPEND RPC
-                DatagramPacket packet = new DatagramPacket(buf, buf.length);
-                socket.receive(packet);
-                String received = new String(packet.getData(), 0, packet.getLength());
-                LOGGER.info("SERVER: RECEIVED: ", received);
-                */
             }
         } catch (Exception ex) {
             LOGGER.info("Exception caused in send echo: ", ex);
@@ -86,27 +73,13 @@ public class UDPSocketServer {
     }
 
     public String createHeartbeatMessage() {
-        /*
-        AppendEntryRPC heartbeat= new AppendEntryRPC();
-        heartbeat.setLeaderId(NodeState.getNodeState().getNodeValue());
-        heartbeat.setType(NodeConstants.REQUEST.HEARTBEAT);
-        heartbeat.setTerm(nodeState.getTerm());
-        Gson gson= new Gson();
-        String message= gson.toJson(heartbeat);
-        return message;
-        */
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("leaderId", nodeState.getNodeValue());
-//        jsonObject.put("type", NodeConstants.REQUEST.HEARTBEAT.ordinal());
-        jsonObject.put("request", NodeConstants.REQUEST.HEARTBEAT.name());
+        jsonObject.put("type", NodeConstants.REQUEST.HEARTBEAT.ordinal());
         jsonObject.put("term", nodeState.getTerm());
         String message = jsonObject.toString();
         LOGGER.info("Sending heartbeat: " + message);
         return message;
-    }
-
-    public void close() throws SocketException {
-        socket.close();
     }
 
 }

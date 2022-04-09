@@ -118,18 +118,18 @@ services:
       - "27021:27017"
     volumes:
       - mongo-data-5:/data/db
-  controller:
-    container_name: Controller
-    build: Controller/.
-    stdin_open: true
-    networks:
-      - servers-network
-    depends_on:
-      - node1
-      - node2
-      - node3
-      - node4
-      - node5
+  # controller:
+  #   container_name: Controller
+  #   build: Controller/.
+  #   stdin_open: true
+  #   networks:
+  #     - servers-network
+  #   depends_on:
+  #     - node1
+  #     - node2
+  #     - node3
+  #     - node4
+  #     - node5
 networks:
   db-app-1:
     driver: bridge
