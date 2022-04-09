@@ -3,6 +3,7 @@ package com.ds.management.util;
 import com.ds.management.configuration.SocketConfig;
 import com.ds.management.constants.NodeConstants;
 import com.ds.management.constants.NodeInfo;
+import com.ds.management.models.AppendEntryRPC;
 import com.ds.management.models.NodeState;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -32,7 +33,7 @@ public class UDPSocketServer {
     private String isMaster;
 
     @Value("${node.value}")
-    private String val;
+    private Integer val;
 
     @Autowired
     private SocketConfig socketConfig;
@@ -73,13 +74,14 @@ public class UDPSocketServer {
     }
 
     public String createHeartbeatMessage() {
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("leaderId", nodeState.getNodeValue());
-        jsonObject.put("type", NodeConstants.REQUEST.HEARTBEAT.ordinal());
-        jsonObject.put("term", nodeState.getTerm());
-        String message = jsonObject.toString();
-        LOGGER.info("Sending heartbeat: " + message);
-        return message;
+        AppendEntryRPC ae= new AppendEntryRPC();
+        ae.setTerm(nodeState.getTerm());
+        ae.setLeaderId(nodeState.getNodeValue());
+        ae.setType(NodeConstants.REQUEST.HEARTBEAT.ordinal());
+        JSONObject jsonObject = new JSONObject(ae);
+        String heartbeatMessage= jsonObject.toString();
+        LOGGER.info("Sending heartbeat: " + heartbeatMessage);
+        return heartbeatMessage;
     }
 
 }

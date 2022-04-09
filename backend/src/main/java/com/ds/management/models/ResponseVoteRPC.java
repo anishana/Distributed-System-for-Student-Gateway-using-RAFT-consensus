@@ -6,9 +6,7 @@ import lombok.Data;
 public class ResponseVoteRPC {
 
     private Integer type;
-    private String votedBy;
-    private String votedFor;
-    private Boolean hasVoted;
+    private Integer votedBy;
     private Integer term;
 
 }

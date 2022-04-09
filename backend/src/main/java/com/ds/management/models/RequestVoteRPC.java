@@ -13,7 +13,7 @@ To be added:
 public class RequestVoteRPC {
 
     private Integer type;
-    private String candidateId;
+    private Integer candidateId;
     private Integer term;
 
 }

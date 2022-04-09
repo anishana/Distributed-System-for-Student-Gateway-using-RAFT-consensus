@@ -15,8 +15,8 @@ import java.util.List;
 @Data
 public class AppendEntryRPC {
 
-    private String leaderId;
-    private NodeConstants.REQUEST type;
+    private Integer leaderId;
+    private Integer type;
     private Integer term;
 
 }

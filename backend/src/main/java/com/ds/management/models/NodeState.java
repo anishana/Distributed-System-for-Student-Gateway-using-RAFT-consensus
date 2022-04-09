@@ -17,14 +17,14 @@ public class NodeState {
     private Integer timeout;
     private Integer heartbeat;
     private NodeConstants.SERVER_STATE server_state;
-    private String nodeValue;
+    private Integer nodeValue;
     private String votedFor;
     private Boolean hasVotedInThisTerm;
     private Integer term;
     private Integer numberOfVotes;
     private Set<String> votedBy;
     private Boolean isLeader;
-    private String currentLeader;
+    private Integer currentLeader;
     private String nodeName;
 
     private NodeState() {
@@ -40,7 +40,7 @@ public class NodeState {
         votedBy = new HashSet<>();
         numberOfVotes = 0;
         isLeader = false;
-        currentLeader = "";
+        currentLeader = 0;
     }
 
     public static NodeState getNodeState() {
