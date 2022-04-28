@@ -19,6 +19,6 @@ public class NodeInfo {
 
     public static Integer majorityNodes = 3;
 
-    public static final Integer base_rate= 1500;
+    public static final Integer base_rate= 150;
 
 }

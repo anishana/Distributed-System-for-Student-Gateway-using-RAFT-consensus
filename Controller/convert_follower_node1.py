@@ -4,7 +4,7 @@ import traceback
 import time
 
 # Wait following seconds below sending the controller request
-time.sleep(10)
+time.sleep(30)
 
 # Read Message Template
 msg = json.load(open("Message.json"))

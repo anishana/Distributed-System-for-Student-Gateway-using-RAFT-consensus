@@ -54,12 +54,14 @@ public class UDPSocketListener {
     public void listen() {
         isRunning = true;
         String receivedMessage = "";
+        DatagramPacket packet_received = new DatagramPacket(buf, buf.length);
+
         while (isRunning) {
             try {
-                DatagramPacket packet_received = new DatagramPacket(buf, buf.length);
                 try {
                     socket.receive(packet_received);
                     if (buf != null && buf.length > 0) {
+//                        LOGGER.info(String.valueOf(socket.getReceiveBufferSize()));
                         receivedMessage = new String(packet_received.getData(), 0, packet_received.getLength());
                         parseMessage(receivedMessage, packet_received);
                     }
