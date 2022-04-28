@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class ResponseVoteRPC {
 
-    private Integer type;
+    private Integer request;
     private Integer votedBy;
     private Integer term;
 

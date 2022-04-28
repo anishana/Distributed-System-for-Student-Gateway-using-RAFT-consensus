@@ -1,11 +1,14 @@
 package com.ds.management.models;
 
-public class RPCMessage {
+import lombok.Data;
+import lombok.ToString;
 
+@Data
+@ToString
+public class Message {
     private String sender_name;
     private String request;
     private Integer term;
-    private Integer key;
+    private String key;
     private String value;
-
 }

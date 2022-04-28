@@ -15,8 +15,10 @@ import java.util.List;
 @Data
 public class AppendEntryRPC {
 
-    private Integer leaderId;
-    private Integer type;
+    private String sender_name;
+    private Integer request;
     private Integer term;
+    private String key;
+    private String value;
 
 }
