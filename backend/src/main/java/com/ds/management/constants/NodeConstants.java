@@ -1,21 +1,21 @@
 package com.ds.management.constants;
 
-import java.util.HashMap;
-
 public class NodeConstants {
     public enum SERVER_STATE {FOLLOWER, CANDIDATE, LEADER}
 
     public enum REQUEST {
-        HEARTBEAT,
+        APPEND_ENTRY,
         VOTE_REQUEST,
         VOTE_ACK,
         ACKNOWLEDGE_LEADER,
         CONVERT_FOLLOWER,
         LEADER_INFO,
-        ACKNOWLEDGE_LEADER_INFO,
         SHUTDOWN,
         SHUTDOWN_PROPAGATE,
-        TIMEOUT
+        TIMEOUT,
+        STORE,
+        RETRIEVE,
+        COMMITTED_LOGS
     }
 
     public final static String LEADER_KEY = "LEADER";

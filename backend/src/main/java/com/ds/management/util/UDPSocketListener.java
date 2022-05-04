@@ -3,21 +3,22 @@ package com.ds.management.util;
 import com.ds.management.configuration.SocketConfig;
 import com.ds.management.constants.NodeConstants;
 import com.ds.management.constants.NodeInfo;
+import com.ds.management.models.Entry;
 import com.ds.management.models.Message;
 import com.ds.management.models.NodeState;
 import com.google.gson.Gson;
+import lombok.extern.java.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.w3c.dom.Node;
 
 import javax.annotation.PostConstruct;
 import java.net.*;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 
 
 @Component
@@ -38,11 +39,14 @@ public class UDPSocketListener {
     @Value("${node.value}")
     private String nodeVal;
 
+    @Autowired
+    RequestUtilService requestUtilService;
+
     @PostConstruct
     public void setNodeState() throws SocketException {
         socket = socketConfig.socket();
         nodeState = NodeState.getNodeState();
-        socket.setSoTimeout(5000);
+        socket.setSoTimeout(300 );
         LOGGER.info("socket Info: " + socket.getLocalPort());
         LOGGER.info("Node Details: " + nodeState.toString());
     }
@@ -58,7 +62,9 @@ public class UDPSocketListener {
                     socket.receive(packet_received);
                     if (buf != null && buf.length > 0) {
                         receivedMessage = new String(packet_received.getData(), 0, packet_received.getLength());
-                        parseMessage(receivedMessage, packet_received);
+                        Gson gson= new Gson();
+                        Message packet= gson.fromJson(receivedMessage, Message.class);
+                        parseMessage(packet, packet_received);
                     }
                 } catch (SocketTimeoutException ex) {
                     getReadyForElection();
@@ -70,39 +76,42 @@ public class UDPSocketListener {
         socket.close();
     }
 
-    public void parseMessage(String message, DatagramPacket receivedPacket) {
+    public void parseMessage(Message message, DatagramPacket receivedPacket) {
         try {
-            LOGGER.info("parseMessage.message: " + message);
-            Gson gson= new Gson();
-            Message packet= gson.fromJson(message, Message.class);
-            String type= packet.getRequest();
-            if (type.equalsIgnoreCase(NodeConstants.REQUEST.HEARTBEAT.toString())) {
+            String type= message.getRequest();
+            if (type.equalsIgnoreCase(NodeConstants.REQUEST.APPEND_ENTRY.toString())) {
                 LOGGER.info("Heartbeat received at: "+message);
+                checkForHeartbeat(message);
             } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.VOTE_REQUEST.toString())) {
                 LOGGER.info("Got a Vote Request.");
-                voteRequested(packet, receivedPacket);
+                voteRequested(message, receivedPacket);
             } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.VOTE_ACK.toString())) {
                 LOGGER.info("Got a Vote Response.");
-                updateVoteResponse(packet);
+                updateVoteResponse(message);
             } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.toString())) {
                 LOGGER.info("Acknowledge Leader.");
-                setLeader(packet);
+                setLeader(message);
             } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.LEADER_INFO.toString())) {
                 LOGGER.info("Got Leader Info request.");
-                sendLeaderInfo();
+                requestUtilService.createLeaderInfo();
             } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.SHUTDOWN.toString())) {
                 LOGGER.info("Got shutdown request.");
                 shutDownNode();
             } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.SHUTDOWN_PROPAGATE.toString())) {
-                shutdownPropagate(Integer.parseInt(packet.getSender_name()));
+                shutdownPropagate(Integer.parseInt(message.getSender_name()));
             }
             else if(type.equalsIgnoreCase(NodeConstants.REQUEST.CONVERT_FOLLOWER.toString())){
                 convertFollower();
             }
             else if(type.equalsIgnoreCase(NodeConstants.REQUEST.TIMEOUT.toString())){
                 setTimeout();
+            }else if(type.equalsIgnoreCase(NodeConstants.REQUEST.STORE.toString())){
+                LOGGER.info("Store Message.");
+                storeRequest(message);
+            }else if(type.equalsIgnoreCase(NodeConstants.REQUEST.RETRIEVE.toString())){
+                LOGGER.info("Retrive Message.");
+                retrieveMessage(message);
             }
-
         } catch (Exception e) {
             LOGGER.error("parseMessage-------Exception: \n"+ message+ "\n"+ e);
         }
@@ -114,68 +123,20 @@ public class UDPSocketListener {
         byte[] buf;
         try {
             if (nodeState.getServer_state() == NodeConstants.SERVER_STATE.FOLLOWER) {
-                updateNodeState();
-                buf = createRequestVoteRPCObject().getBytes(StandardCharsets.UTF_8);
-                DatagramPacket new_packet;
-                for (String add : NodeInfo.addresses) {
-                    InetAddress address = InetAddress.getByName(add);
-                    new_packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
-                    socket.send(new_packet);
-                }
+                requestUtilService.updateNodeState();
+                buf = requestUtilService.createRequestVoteRPCObject().getBytes(StandardCharsets.UTF_8);
+                requestUtilService.sendPacketToAll(buf);
             }
         } catch (Exception ex) {
             LOGGER.info("EXCEPTION RAISED WHILE ELECTION: " + ex.getMessage());
         }
     }
 
-    public void updateNodeState() {
-        int new_term = nodeState.getTerm() + 1;
-        nodeState.setTerm(new_term);
-        nodeState.setServer_state(NodeConstants.SERVER_STATE.CANDIDATE);
-        nodeState.setNumberOfVotes(0);
-        nodeState.setHasVotedInThisTerm(false);
-    }
-
-    public String createRequestVoteRPCObject() {
-        Message message= new Message();
-        message.setRequest(NodeConstants.REQUEST.VOTE_REQUEST.toString());
-        message.setTerm(nodeState.getTerm());
-        message.setSender_name(nodeState.getNodeValue().toString());
-        Gson gson= new Gson();
-        String voteRequestMessage= gson.toJson(message);
-        LOGGER.info("VOTE REQ OBJECT BY:"+nodeState.getNodeName()+ "; message: " + voteRequestMessage);
-        return voteRequestMessage;
-    }
-
     public void voteRequested(Message voteRequestMessage, DatagramPacket receivedPacket) {
-        byte[] buf = new byte[1024];
-        Integer requestTerm = voteRequestMessage.getTerm();
-        Boolean hasVoted= false;
-
-        Message responseMessage= new Message();
-        responseMessage.setRequest(NodeConstants.REQUEST.VOTE_ACK.toString());
-        responseMessage.setSender_name(nodeState.getNodeValue().toString());
-        responseMessage.setTerm(requestTerm);
-
-        if (requestTerm > nodeState.getTerm()) {
-            nodeState.setTerm(requestTerm);
-            nodeState.setHasVotedInThisTerm(true);
-            hasVoted= true;
-        } else {
-            if (!nodeState.getHasVotedInThisTerm()) {
-                hasVoted= true;
-                nodeState.setHasVotedInThisTerm(true);
-            }
-        }
-        LOGGER.info("Vote requested by: "+voteRequestMessage.getSender_name()+ "; Vote done by: "+nodeState.getNodeValue()+"; Has it voted? "+hasVoted);
-        int value= 0;
-        if(hasVoted){
-            value=1;
-        }
-        responseMessage.setValue(String.valueOf(value));
-
         Gson gson= new Gson();
-        buf= gson.toJson(responseMessage).getBytes(StandardCharsets.UTF_8);
+        Message responseMessage= requestUtilService.createVoteResponse(voteRequestMessage);
+        byte[] buf= gson.toJson(responseMessage).getBytes(StandardCharsets.UTF_8);
+
         InetAddress from_address = receivedPacket.getAddress();
         int from_port = receivedPacket.getPort();
         DatagramPacket packetToSend = new DatagramPacket(buf, buf.length, from_address, from_port);
@@ -205,26 +166,12 @@ public class UDPSocketListener {
 
     public void acknowledgeLeader() {
         LOGGER.info("Are you acknowledging leader: "+nodeState.toString());
-        Message leaderMessage= new Message();
-        leaderMessage.setSender_name(nodeState.getNodeValue().toString());
-        leaderMessage.setTerm(nodeState.getTerm());
-        leaderMessage.setRequest(NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.toString());
+        Message leaderMessage= requestUtilService.createAcknowledgeLeaderRequest();
 
         Gson gson= new Gson();
         String message = gson.toJson(leaderMessage);
         byte[] buf = message.getBytes(StandardCharsets.UTF_8);
-        DatagramPacket new_packet;
-        try {
-            for (String add : NodeInfo.addresses) {
-                if(add.equalsIgnoreCase(nodeState.getNodeName()))
-                    continue;
-                InetAddress address = InetAddress.getByName(add);
-                new_packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
-                socket.send(new_packet);
-            }
-        } catch (Exception exception) {
-            LOGGER.info("EXCEPTION!! ACKNOWLEDGE THE WINNER!!!!");
-        }
+        requestUtilService.sendPacketToAll(buf);
     }
 
     public void setLeader(Message message) {
@@ -232,28 +179,20 @@ public class UDPSocketListener {
         Integer term= message.getTerm();
         if (leader== nodeState.getNodeValue()) {
             nodeState.setIsLeader(true);
+            nodeState.setServer_state(NodeConstants.SERVER_STATE.LEADER);
         } else {
             nodeState.setIsLeader(false);
+            nodeState.setServer_state(NodeConstants.SERVER_STATE.FOLLOWER);
         }
         nodeState.setCurrentLeader(leader);
         nodeState.setTerm(term);
         LOGGER.info("Setting leader for term: " + nodeState.getTerm() + "; leader is : " + leader);
     }
 
-    public void sendLeaderInfo() {
-        Gson gson= new Gson();
-        Map<String, String> map= new HashMap<String, String>();
-        map.put("type", NodeConstants.REQUEST.ACKNOWLEDGE_LEADER_INFO.toString());
-        map.put("key", NodeConstants.LEADER_KEY);
-        map.put("value", nodeState.getNodeName());
-        LOGGER.info(gson.toJson(map));
-    }
-
     public void setTimeout(){
         try{
             getReadyForElection();
-        }
-        catch (Exception ex){
+        } catch (Exception ex){
             LOGGER.info("Exception while setting timeout and starting election.");
         }
     }
@@ -271,26 +210,14 @@ public class UDPSocketListener {
     public void shutDownNode() {
         if (!socket.isClosed()) {
             LOGGER.info("Closing socket " + nodeVal);
-            Message message= new Message();
-            message.setSender_name(nodeVal);
-            message.setRequest(NodeConstants.REQUEST.SHUTDOWN_PROPAGATE.toString());
+            Message message= requestUtilService.createShutdownRequest();
             Gson gson= new Gson();
             byte[] buf = gson.toJson(message).getBytes(StandardCharsets.UTF_8);
-            DatagramPacket new_packet;
-            try {
-                for (String add : NodeInfo.addresses) {
-                    InetAddress address = InetAddress.getByName(add);
-                    new_packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
-                    socket.send(new_packet);
-                }
-            } catch (Exception exception) {
-                LOGGER.info("EXCEPTION in shutdown!!!!");
-            }
+            requestUtilService.sendPacketToAll(buf);
             socket.close();
             isRunning = false;
         }
     }
-
 
     public void shutdownPropagate(Integer nodeId) {
         if (NodeInfo.totalNodes > 1) {
@@ -304,6 +231,31 @@ public class UDPSocketListener {
             NodeInfo.addresses.remove(shutdownAddress);
         }
         LOGGER.info("shutdownPropagate. NodeInfo.addresses: " + NodeInfo.addresses.toString());
+    }
+
+    public void storeRequest(Message receivedMessage){
+        if(nodeState.getIsLeader()){
+            Entry entry= requestUtilService.createEntryFromStoreRequest(receivedMessage);
+            nodeState.getEntries().add(entry);
+        } else {
+            requestUtilService.createLeaderInfo();
+        }
+    }
+
+    public void retrieveMessage(Message receivedMessage){
+        if (nodeState.getIsLeader()){
+            requestUtilService.createRetrieveMessage();
+        } else {
+            requestUtilService.createLeaderInfo();
+        }
+    }
+
+    public void checkForHeartbeat(Message message){
+       if(message.getLog()== null){
+           LOGGER.info("Heartbeat received from: "+message.getSender_name());
+       } else {
+           LOGGER.info("AppendEntry Message.");
+       }
     }
 
 }

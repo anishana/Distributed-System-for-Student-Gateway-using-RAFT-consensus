@@ -4,10 +4,7 @@ import com.ds.management.constants.NodeConstants;
 import com.ds.management.constants.NodeInfo;
 import lombok.Data;
 
-import javax.annotation.PostConstruct;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 @Data
 public class NodeState {
@@ -18,14 +15,23 @@ public class NodeState {
     private Integer heartbeat;
     private NodeConstants.SERVER_STATE server_state;
     private Integer nodeValue;
-    private String votedFor;
-    private Boolean hasVotedInThisTerm;
-    private Integer term;
-    private Integer numberOfVotes;
-    private Set<String> votedBy;
-    private Boolean isLeader;
-    private Integer currentLeader;
     private String nodeName;
+    private Boolean hasVotedInThisTerm;
+    private Integer numberOfVotes;
+    private Boolean isLeader;
+
+    //persistent state on all servers
+    private Integer term;
+    private String votedFor;
+    private List<Entry> entries;
+
+    //volatile state on all servers
+    private Integer commitIndex;
+    private Integer lastApplied;
+
+    //volatile state on leaders
+    private Map<String, Integer> nextIndex;
+    private Map<String, Integer> matchIndex;
 
     private NodeState() {
         Random random = new Random();
@@ -34,13 +40,13 @@ public class NodeState {
         server_state = NodeConstants.SERVER_STATE.FOLLOWER;
         nodeValue = NodeInfo.NODE_VALUE;
         nodeName= "Node"+ nodeValue;
-        votedFor = "";
         hasVotedInThisTerm = false;
-        term = 0;
-        votedBy = new HashSet<>();
         numberOfVotes = 0;
         isLeader = false;
-        currentLeader = 0;
+
+        term = 0;
+        votedFor = "";
+        entries= new ArrayList<>();
     }
 
     public static NodeState getNodeState() {
