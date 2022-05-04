@@ -13,8 +13,11 @@ services:
       DB_PORT: 27017
       MASTER: "yes"
       NODE_NO: 1
+      LOG_FILE: log_file_1.txt
     ports: 
       - "8081:8080"
+    volumes:
+      - D:\University Work\DS\data:/data/logs
     build:
       context: ./backend
       dockerfile: ./Dockerfile
@@ -39,8 +42,11 @@ services:
       DB_PORT: 27017
       MASTER: "no"
       NODE_NO: 2
+      LOG_FILE: log_file_2.txt
     ports: 
       - "8082:8080"
+    volumes:
+      - D:\University Work\DS\data:/data/logs
   mongo-2:
     image: mongo
     networks:
@@ -62,8 +68,11 @@ services:
       DB_PORT: 27017
       MASTER: "no"
       NODE_NO: 3
+      LOG_FILE: log_file_3.txt
     ports: 
       - "8083:8080"
+    volumes:
+      - D:\University Work\DS\data:/data/logs
   mongo-3:
     image: mongo
     networks:
@@ -85,8 +94,11 @@ services:
       DB_PORT: 27017
       MASTER: "no"
       NODE_NO: 4
+      LOG_FILE: log_file_4.txt
     ports: 
       - "8084:8080"
+    volumes:
+      - D:\University Work\DS\data:/data/logs
   mongo-4:
     image: mongo
     networks:
@@ -108,8 +120,11 @@ services:
       DB_PORT: 27017
       MASTER: "no"
       NODE_NO: 5
+      LOG_FILE: log_file_5.txt
     ports: 
       - "8085:8080"
+    volumes:
+      - D:\University Work\DS\data:/data/logs
   mongo-5:
     image: mongo
     networks:
@@ -120,7 +135,7 @@ services:
       - mongo-data-5:/data/db
   controller:
     container_name: Controller
-    build: Controller/.
+    build: Controller_Java/.
     stdin_open: true
     networks:
       - servers-network
@@ -130,6 +145,8 @@ services:
       - node3
       - node4
       - node5
+    ports: 
+      - "8086:8080"
 networks:
   db-app-1:
     driver: bridge

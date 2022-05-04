@@ -13,22 +13,38 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
 public class RequestUtilService {
 
+    private DatagramSocket socket;
     @Value("${node.value}")
     private String nodeVal;
+
 
     @Autowired
     private SocketConfig socketConfig;
 
-    private static NodeState nodeState= NodeState.getNodeState();
+    @PostConstruct
+    public void getSocketConfig(){
+        try {
+            socket = socketConfig.socket();
+        } catch (SocketException e) {
+            LOGGER.error("getSocketConfig.Error: ",e);
+        }
+    }
+
+    private static NodeState nodeState = NodeState.getNodeState();
 
     private final static Logger LOGGER = LoggerFactory.getLogger(RequestUtilService.class);
 
@@ -41,51 +57,62 @@ public class RequestUtilService {
     }
 
     public String createRequestVoteRPCObject() {
-        Message message= new Message();
+        Message message = new Message();
         message.setRequest(NodeConstants.REQUEST.VOTE_REQUEST.toString());
         message.setTerm(nodeState.getTerm());
         message.setSender_name(nodeState.getNodeValue().toString());
-        Gson gson= new Gson();
-        String voteRequestMessage= gson.toJson(message);
-        LOGGER.info("VOTE REQ OBJECT BY:"+nodeState.getNodeName()+ "; message: " + voteRequestMessage);
+        Gson gson = new Gson();
+        String voteRequestMessage = gson.toJson(message);
+        LOGGER.info("VOTE REQ OBJECT BY:" + nodeState.getNodeName() + "; message: " + voteRequestMessage);
         return voteRequestMessage;
     }
 
-    public void sendPacketToAll(byte[] buf){
-        try{
+    public void sendPacketToAll(String message) {
+        try {
+            byte[] buf = message.getBytes(StandardCharsets.UTF_8);
             DatagramPacket new_packet;
-            DatagramSocket socket= socketConfig.socket();
             for (String add : NodeInfo.addresses) {
                 InetAddress address = InetAddress.getByName(add);
                 new_packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
                 socket.send(new_packet);
             }
-        }catch (Exception ex){
-            LOGGER.info("EXCEPTION CAUSED IN SENDING PACKET: "+ex.getMessage());
+        } catch (Exception ex) {
+            LOGGER.info("EXCEPTION CAUSED IN SENDING PACKET: " + ex.getMessage());
         }
     }
 
-    public void sendPacketToAllExceptSelf(byte[] buf){
-        try{
+
+    public void sendPacketToNode(String message, InetAddress to_address, int to_port){
+        byte[] buf = message.getBytes(StandardCharsets.UTF_8);
+        DatagramPacket packetToSend = new DatagramPacket(buf, buf.length, to_address, to_port);
+        try {
+            socket.send(packetToSend);
+        } catch (Exception exception) {
+            LOGGER.error("sendMessageToNode.message: "+message+", Error: ", exception);
+        }
+    }
+
+    public void sendPacketToAllExceptSelf(String message) {
+        try {
+            byte[] buf = message.getBytes(StandardCharsets.UTF_8);
             DatagramPacket new_packet;
-            DatagramSocket socket= socketConfig.socket();
             for (String add : NodeInfo.addresses) {
-                if(add.equalsIgnoreCase(nodeState.getNodeName()))
+                if (add.equalsIgnoreCase(nodeState.getNodeName()))
                     continue;
                 InetAddress address = InetAddress.getByName(add);
                 new_packet = new DatagramPacket(buf, buf.length, address, NodeInfo.port);
                 socket.send(new_packet);
             }
-        }catch (Exception ex){
-            LOGGER.info("EXCEPTION CAUSED IN SENDING PACKET: "+ex.getMessage());
+        } catch (Exception ex) {
+            LOGGER.info("EXCEPTION CAUSED IN SENDING PACKET: " + ex.getMessage());
         }
     }
 
-    public Message createVoteResponse(Message voteRequestMessage){
+    public Message createVoteResponse(Message voteRequestMessage) {
         Integer requestTerm = voteRequestMessage.getTerm();
-        Boolean hasVoted= false;
+        boolean hasVoted = false;
 
-        Message responseMessage= new Message();
+        Message responseMessage = new Message();
         responseMessage.setRequest(NodeConstants.REQUEST.VOTE_ACK.toString());
         responseMessage.setSender_name(nodeState.getNodeValue().toString());
         responseMessage.setTerm(requestTerm);
@@ -93,74 +120,88 @@ public class RequestUtilService {
         if (requestTerm > nodeState.getTerm()) {
             nodeState.setTerm(requestTerm);
             nodeState.setHasVotedInThisTerm(true);
-            hasVoted= true;
+            hasVoted = true;
         } else {
             if (!nodeState.getHasVotedInThisTerm()) {
-                hasVoted= true;
+                hasVoted = true;
                 nodeState.setHasVotedInThisTerm(true);
             }
         }
-        LOGGER.info("Vote requested by: "+voteRequestMessage.getSender_name()+ "; Vote done by: "+nodeState.getNodeValue()+"; Has it voted? "+hasVoted);
-        int value= 0;
-        if(hasVoted){
-            value=1;
+        LOGGER.info("Vote requested by: " + voteRequestMessage.getSender_name() + "; Vote done by: " + nodeState.getNodeValue() + "; Has it voted? " + hasVoted);
+        int value = 0;
+        if (hasVoted) {
+            value = 1;
         }
         responseMessage.setValue(String.valueOf(value));
         return responseMessage;
     }
 
-    public Message createAcknowledgeLeaderRequest(){
-        Message leaderMessage= new Message();
+    public Message createAcknowledgeLeaderRequest() {
+        Message leaderMessage = new Message();
         leaderMessage.setSender_name(nodeState.getNodeValue().toString());
         leaderMessage.setTerm(nodeState.getTerm());
         leaderMessage.setRequest(NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.toString());
         return leaderMessage;
     }
 
-    public void createLeaderInfo() {
-        Gson gson= new Gson();
-        Message message= new Message();
+    public String createLeaderInfo() {
+        Gson gson = new Gson();
+        Message message = new Message();
         message.setSender_name(nodeState.getNodeName());
         message.setRequest(NodeConstants.REQUEST.LEADER_INFO.toString());
-        message.setValue(nodeState.getNodeName());
+        message.setValue("Node" + nodeState.getCurrentLeader());
         LOGGER.info(gson.toJson(message));
+        return gson.toJson(message);
     }
 
-    public Message createShutdownRequest(){
-        Message message= new Message();
+    public Message createShutdownRequest() {
+        Message message = new Message();
         message.setSender_name(nodeVal);
         message.setRequest(NodeConstants.REQUEST.SHUTDOWN_PROPAGATE.toString());
         return message;
     }
 
-    public Entry createEntryFromStoreRequest(Message receivedMessage){
-        Entry entry= new Entry();
+    public Entry createEntryFromStoreRequest(Message receivedMessage) {
+        Entry entry = new Entry();
         entry.setTerm(nodeState.getTerm().toString());
         entry.setKey(receivedMessage.getKey());
         entry.setValue(receivedMessage.getValue());
         return entry;
     }
 
-    public void createRetrieveMessage(){
-        Gson gson= new Gson();
-        Message message= new Message();
+    public String createRetrieveMessage() {
+        Gson gson = new Gson();
+        Message message = new Message();
         message.setSender_name(nodeState.getNodeName());
         message.setKey(NodeConstants.REQUEST.COMMITTED_LOGS.toString());
-        String entries= gson.toJson(nodeState.getEntries());
+        message.setRequest(NodeConstants.REQUEST.RETRIEVE.toString());
+        String entries = gson.toJson(nodeState.getEntries());
         message.setValue(entries);
-        LOGGER.info("Retrieve message: "+ gson.toJson(message));
+        LOGGER.info("Retrieve message: " + gson.toJson(message));
+        return gson.toJson(message);
     }
 
-    public String createHeartBeatMessage(){
-        Gson gson= new Gson();
-        Message message= new Message();
+    public String createHeartBeatMessage() {
+        Gson gson = new Gson();
+        Message message = new Message();
         message.setSender_name(nodeState.getNodeValue().toString());
         message.setRequest(NodeConstants.REQUEST.APPEND_ENTRY.toString());
         message.setTerm(nodeState.getTerm());
-        String heartbeatMessage= gson.toJson(message);
+        String heartbeatMessage = gson.toJson(message);
         LOGGER.info("Sending heartbeat: " + heartbeatMessage);
         return heartbeatMessage;
     }
 
-
+    public String createAppendReply(boolean reply){
+        Gson gson = new Gson();
+        Message message = new Message();
+        message.setTerm(nodeState.getTerm());
+        message.setRequest(NodeConstants.REQUEST.APPEND_REPLY.toString());
+        message.setSender_name(nodeState.getNodeName());
+        message.setValue(String.valueOf(reply));
+        String appendReplyMessage = gson.toJson(message);
+        LOGGER.info("createAppendReply.message: " + appendReplyMessage);
+        return appendReplyMessage;
+    }
 }
+

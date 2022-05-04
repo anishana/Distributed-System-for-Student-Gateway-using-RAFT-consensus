@@ -2,13 +2,13 @@ package com.ds.management.models.requests;
 
 import java.util.List;
 
-public class StudentRequest {
-    private String name;
+public class StudentRequest {private String name;
     private String studentNumber;
     private String email;
     private Integer age;
     private Double cgpa;
     private List<String> subjects;
+
 
     public String getName() {
         return name;

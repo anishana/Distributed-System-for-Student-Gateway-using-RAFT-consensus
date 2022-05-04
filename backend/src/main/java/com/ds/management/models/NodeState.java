@@ -32,6 +32,7 @@ public class NodeState {
     //volatile state on leaders
     private Map<String, Integer> nextIndex;
     private Map<String, Integer> matchIndex;
+    private Integer currentLeader;
 
     private NodeState() {
         Random random = new Random();
@@ -43,6 +44,8 @@ public class NodeState {
         hasVotedInThisTerm = false;
         numberOfVotes = 0;
         isLeader = false;
+        lastApplied=0;
+        commitIndex=0;
 
         term = 0;
         votedFor = "";

@@ -1,10 +1,8 @@
-package com.ds.management.constants;
-
-import java.util.HashMap;
+package com.ds.Controller_Java.constants;
 
 public class NodeConstants {
-    public enum SERVER_STATE {FOLLOWER, CANDIDATE, LEADER}
-
+    public static StringBuffer leaderName = new StringBuffer();
+    public static Integer clusterPort = 5555;
     public enum REQUEST {
         HEARTBEAT,
         VOTE_REQUEST,
@@ -23,5 +21,4 @@ public class NodeConstants {
         APPEND_REPLY
     }
 
-    public final static String LEADER_KEY = "LEADER";
 }

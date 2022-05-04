@@ -53,12 +53,11 @@ public class UDPSocketServer {
     }
 
     @Async
-    @Scheduled(fixedRate = 150)
+    @Scheduled(fixedRate = 1500)
     public void sendEcho() {
         try {
             if (nodeState.getIsLeader() && !socket.isClosed()) {
-                buf = requestUtilService.createHeartBeatMessage().getBytes(StandardCharsets.UTF_8);
-                requestUtilService.sendPacketToAll(buf);
+                requestUtilService.sendPacketToAll(requestUtilService.createHeartBeatMessage());
             }
         } catch (Exception ex) {
             LOGGER.info("Exception caused in send echo: ", ex);
