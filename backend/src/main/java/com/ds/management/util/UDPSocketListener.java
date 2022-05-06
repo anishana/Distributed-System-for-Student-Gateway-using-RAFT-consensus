@@ -20,12 +20,15 @@ import java.net.*;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 
+import static com.ds.management.models.NodeState.getNodeState;
+
 
 @Component
 public class UDPSocketListener {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(UDPSocketListener.class);
 
+    private boolean shutdown;
     private boolean isRunning;
     private DatagramSocket socket;
     private NodeState nodeState;
@@ -49,7 +52,7 @@ public class UDPSocketListener {
     @PostConstruct
     public void setNodeState() throws SocketException {
         socket = socketConfig.socket();
-        nodeState = NodeState.getNodeState();
+        nodeState = getNodeState();
         socket.setSoTimeout(3000);
         LOGGER.info("socket Info: " + socket.getLocalPort());
         LOGGER.info("Node Details: " + nodeState.toString());
@@ -85,44 +88,52 @@ public class UDPSocketListener {
             String type = message.getRequest();
             String key = message.getRequest();
 
-            if (type.equalsIgnoreCase(NodeConstants.REQUEST.APPEND_ENTRY.toString())) {
-//                LOGGER.info("Heartbeat received at: " + message);
-                checkForHeartbeat(message);
-                //Added if the election is done before the application is up. Edge case.
-                if (NodeState.getNodeState().getCurrentLeader() == null) {
+            if (!getNodeState().getCurrentShutdownState()) {
+                if (type.equalsIgnoreCase(NodeConstants.REQUEST.APPEND_ENTRY.toString())) {
+                    LOGGER.info("Heartbeat received at: " + message);
+                    checkForHeartbeat(message, receivedPacket);
+                    //Added if the election is done before the application is up. Edge case.
+                    if (getNodeState().getCurrentLeader() == null) {
+                        setLeader(message);
+                    }
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.VOTE_REQUEST.toString())) {
+                    LOGGER.info("Got a Vote Request.");
+                    voteRequested(message, receivedPacket);
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.VOTE_ACK.toString())) {
+                    LOGGER.info("Got a Vote Response.");
+                    updateVoteResponse(message);
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.toString())) {
+                    LOGGER.info("Acknowledge Leader.");
                     setLeader(message);
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.LEADER_INFO.toString())) {
+                    LOGGER.info("Got Leader Info request.");
+                    sendLeaderInfo(receivedPacket);
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.SHUTDOWN.toString())) {
+                    LOGGER.info("Got shutdown request.");
+                    shutDownNode();
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.SHUTDOWN_PROPAGATE.toString())) {
+                    shutdownPropagate(message.getSender_name());
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.CONVERT_FOLLOWER.toString())) {
+                    convertFollower();
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.TIMEOUT.toString())) {
+                    setTimeout();
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.STORE.toString())) {
+                    LOGGER.info("Store Message.");
+                    storeRequest(message, receivedPacket);
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.RETRIEVE.toString())
+                        && !(key.equalsIgnoreCase(NodeConstants.REQUEST.COMMITTED_LOGS.toString()))) {
+                    LOGGER.info("Retrieve Message Request.");
+                    retrieveMessage(message, receivedPacket);
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.RETRIEVE.toString())
+                        && key.equalsIgnoreCase(NodeConstants.REQUEST.COMMITTED_LOGS.toString())) {
+                    LOGGER.info("Received Retrieve Message." + message);
+                } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.APPEND_REPLY.toString())) {
+                    LOGGER.info("Received Append Reply." + message);
+                    receiveAppendReply(message, receivedPacket);
                 }
-            } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.VOTE_REQUEST.toString())) {
-                LOGGER.info("Got a Vote Request.");
-                voteRequested(message, receivedPacket);
-            } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.VOTE_ACK.toString())) {
-                LOGGER.info("Got a Vote Response.");
-                updateVoteResponse(message);
-            } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.toString())) {
-                LOGGER.info("Acknowledge Leader.");
-                setLeader(message);
-            } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.LEADER_INFO.toString())) {
-                LOGGER.info("Got Leader Info request.");
-                sendLeaderInfo(receivedPacket);
-            } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.SHUTDOWN.toString())) {
-                LOGGER.info("Got shutdown request.");
-                shutDownNode();
-            } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.SHUTDOWN_PROPAGATE.toString())) {
-                shutdownPropagate(Integer.parseInt(message.getSender_name()));
-            } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.CONVERT_FOLLOWER.toString())) {
-                convertFollower();
-            } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.TIMEOUT.toString())) {
-                setTimeout();
-            } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.STORE.toString())) {
-                LOGGER.info("Store Message.");
-                storeRequest(message, receivedPacket);
-            } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.RETRIEVE.toString())
-                    && !(key.equalsIgnoreCase(NodeConstants.REQUEST.COMMITTED_LOGS.toString()))) {
-                LOGGER.info("Retrieve Message Request.");
-                retrieveMessage(message, receivedPacket);
-            } else if (type.equalsIgnoreCase(NodeConstants.REQUEST.RETRIEVE.toString())
-                    && key.equalsIgnoreCase(NodeConstants.REQUEST.COMMITTED_LOGS.toString())) {
-                LOGGER.info("Received Retrieve Message." + message);
+            } else {
+                if (type.equalsIgnoreCase(NodeConstants.REQUEST.RESUME.toString()))
+                    resumeNode();
             }
         } catch (Exception e) {
             LOGGER.error("parseMessage-------Exception: \n" + message + "\n" + e);
@@ -185,9 +196,10 @@ public class UDPSocketListener {
     }
 
     public void setLeader(Message message) {
-        int leader = Integer.parseInt(message.getSender_name());
+//        int leader = Integer.parseInt(message.getSender_name());
+        String leader = message.getSender_name();
         Integer term = message.getTerm();
-        if (leader == nodeState.getNodeValue()) {
+        if (leader.equalsIgnoreCase(nodeState.getNodeName())) {
             nodeState.setIsLeader(true);
             nodeState.setServer_state(NodeConstants.SERVER_STATE.LEADER);
         } else {
@@ -220,20 +232,24 @@ public class UDPSocketListener {
     public void shutDownNode() {
         if (!socket.isClosed()) {
             LOGGER.info("Closing socket " + nodeVal);
-            Message message = requestUtilService.createShutdownRequest();
-            Gson gson = new Gson();
-            requestUtilService.sendPacketToAll(gson.toJson(message));
-            socket.close();
-            isRunning = false;
+//            Message message = requestUtilService.createShutdownRequest();
+//            Gson gson = new Gson();
+//            requestUtilService.sendPacketToAll(gson.toJson(message));
+            NodeState.getNodeState().setCurrentShutdownState(true);
+//            shutdown = true;
+//            isRunning = false;
+//            socket.close();
         }
     }
 
-    public void shutdownPropagate(Integer nodeId) {
+    public void shutdownPropagate(String nodeId) {
         if (NodeInfo.totalNodes > 1) {
             String shutdownAddress = "";
             for (String removedAddress : NodeInfo.addresses) {
-                if (removedAddress.equalsIgnoreCase(nodeState.getNodeName()))
+                if (removedAddress.equalsIgnoreCase(nodeId)) {
                     shutdownAddress = nodeState.getNodeName();
+                    break;
+                }
             }
             NodeInfo.totalNodes--;
             NodeInfo.majorityNodes = (int) Math.ceil(NodeInfo.totalNodes / 2.0);
@@ -242,12 +258,17 @@ public class UDPSocketListener {
         LOGGER.info("shutdownPropagate. NodeInfo.addresses: " + NodeInfo.addresses.toString());
     }
 
+    public void resumeNode() {
+        getNodeState().setCurrentShutdownState(false);
+    }
+
     public void storeRequest(Message receivedMessage, DatagramPacket receivedPacket) {
         if (nodeState.getIsLeader()) {
             LOGGER.info("storeRequest.receivedMessage: " + receivedMessage.toString());
             Entry entry = requestUtilService.createEntryFromStoreRequest(receivedMessage);
             LOGGER.info("storeRequest.entry: " + entry.toString());
             nodeState.getEntries().add(entry);
+            nodeState.getCurrentAppendReplyCount().add(0);
         } else {
             sendLeaderInfo(receivedPacket);
         }
@@ -263,11 +284,20 @@ public class UDPSocketListener {
         }
     }
 
-    public void checkForHeartbeat(Message message) {
-        if (message.getLog() == null) {
+    public void checkForHeartbeat(Message message, DatagramPacket receivedPacket) {
+
+        if (message.getLog() == null || message.getLog().size() == 0) {
+            if (message.getCommitIndex().intValue() != NodeState.getNodeState().getCommitIndex().intValue()) {
+                NodeState.getNodeState().setCommitIndex(message.getCommitIndex());
+            }
 //            LOGGER.info("Heartbeat received from: " + message.getSender_name());
         } else {
             LOGGER.info("AppendEntry Message.");
+
+            if (message.getCommitIndex().intValue() == NodeState.getNodeState().getLastApplied())
+                sendAppendReply(true, receivedPacket);
+            else
+                sendAppendReply(false, receivedPacket);
         }
     }
 
@@ -292,13 +322,32 @@ public class UDPSocketListener {
         requestUtilService.sendPacketToNode(message, receivedPacket.getAddress(), receivedPacket.getPort());
     }
 
-    public void appendReply(boolean reply, DatagramPacket receivedPacket) {
+    public void sendAppendReply(boolean reply, DatagramPacket receivedPacket) {
         if (reply) {
-            Integer lastApplied = NodeState.getNodeState().getLastApplied();
-            NodeState.getNodeState().setLastApplied(++lastApplied);
+            Integer lastApplied = getNodeState().getLastApplied();
+            getNodeState().setLastApplied(++lastApplied);
         }
         String message = requestUtilService.createAppendReply(reply);
         requestUtilService.sendPacketToNode(message, receivedPacket.getAddress(), receivedPacket.getPort());
+    }
+
+    public void receiveAppendReply(Message message, DatagramPacket receivedPacket) {
+        if (message.getSuccess()) {
+
+            Integer nextIndex = NodeState.getNodeState().getNextIndex().get(message.getSender_name());
+            NodeState.getNodeState().getNextIndex().put(message.getSender_name(), ++nextIndex);
+            NodeState.getNodeState().getMatchIndex().put(message.getSender_name(), message.getMatchIndex());
+
+            NodeState.getNodeState().incrementCurrentAppendReplyCount(message.getMatchIndex() - 1);
+            checkAndIncrementCommitIndex(message.getMatchIndex() - 1);
+        }
+    }
+
+    private void checkAndIncrementCommitIndex(Integer matchIndex) {
+        LOGGER.info("matchIndex: " + matchIndex + ", commitIndex: " + NodeState.getNodeState().getCommitIndex() + ", currentAppendReplyCount: " + NodeState.getNodeState().getCurrentAppendReplyCount().get(matchIndex) + ", ");
+        if ((matchIndex + 1) > NodeState.getNodeState().getCommitIndex() && NodeState.getNodeState().getCurrentAppendReplyCount().get(matchIndex) >= NodeInfo.majorityNodes) {
+            NodeState.getNodeState().setCommitIndex(NodeState.getNodeState().getCommitIndex() + 1);
+        }
     }
 
 }

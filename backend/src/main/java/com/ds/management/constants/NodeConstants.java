@@ -20,8 +20,10 @@ public class NodeConstants {
         RETRIEVE,
         COMMITTED_LOGS,
         APPEND_ENTRY,
-        APPEND_REPLY
+        APPEND_REPLY,
+        RESUME
     }
 
     public final static String LEADER_KEY = "LEADER";
+
 }

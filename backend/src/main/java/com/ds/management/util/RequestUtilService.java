@@ -14,15 +14,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import static com.ds.management.models.NodeState.getNodeState;
 
 @Service
 public class RequestUtilService {
@@ -36,15 +36,15 @@ public class RequestUtilService {
     private SocketConfig socketConfig;
 
     @PostConstruct
-    public void getSocketConfig(){
+    public void getSocketConfig() {
         try {
             socket = socketConfig.socket();
         } catch (SocketException e) {
-            LOGGER.error("getSocketConfig.Error: ",e);
+            LOGGER.error("getSocketConfig.Error: ", e);
         }
     }
 
-    private static NodeState nodeState = NodeState.getNodeState();
+    private static NodeState nodeState = getNodeState();
 
     private final static Logger LOGGER = LoggerFactory.getLogger(RequestUtilService.class);
 
@@ -82,13 +82,13 @@ public class RequestUtilService {
     }
 
 
-    public void sendPacketToNode(String message, InetAddress to_address, int to_port){
+    public void sendPacketToNode(String message, InetAddress to_address, int to_port) {
         byte[] buf = message.getBytes(StandardCharsets.UTF_8);
         DatagramPacket packetToSend = new DatagramPacket(buf, buf.length, to_address, to_port);
         try {
             socket.send(packetToSend);
         } catch (Exception exception) {
-            LOGGER.error("sendMessageToNode.message: "+message+", Error: ", exception);
+            LOGGER.error("sendMessageToNode.message: " + message + ", Error: ", exception);
         }
     }
 
@@ -114,7 +114,7 @@ public class RequestUtilService {
 
         Message responseMessage = new Message();
         responseMessage.setRequest(NodeConstants.REQUEST.VOTE_ACK.toString());
-        responseMessage.setSender_name(nodeState.getNodeValue().toString());
+        responseMessage.setSender_name(nodeState.getNodeName());
         responseMessage.setTerm(requestTerm);
 
         if (requestTerm > nodeState.getTerm()) {
@@ -138,7 +138,7 @@ public class RequestUtilService {
 
     public Message createAcknowledgeLeaderRequest() {
         Message leaderMessage = new Message();
-        leaderMessage.setSender_name(nodeState.getNodeValue().toString());
+        leaderMessage.setSender_name(nodeState.getNodeName());
         leaderMessage.setTerm(nodeState.getTerm());
         leaderMessage.setRequest(NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.toString());
         return leaderMessage;
@@ -149,14 +149,14 @@ public class RequestUtilService {
         Message message = new Message();
         message.setSender_name(nodeState.getNodeName());
         message.setRequest(NodeConstants.REQUEST.LEADER_INFO.toString());
-        message.setValue("Node" + nodeState.getCurrentLeader());
+        message.setValue(nodeState.getCurrentLeader());
         LOGGER.info(gson.toJson(message));
         return gson.toJson(message);
     }
 
     public Message createShutdownRequest() {
         Message message = new Message();
-        message.setSender_name(nodeVal);
+        message.setSender_name(nodeState.getNodeName());
         message.setRequest(NodeConstants.REQUEST.SHUTDOWN_PROPAGATE.toString());
         return message;
     }
@@ -175,30 +175,49 @@ public class RequestUtilService {
         message.setSender_name(nodeState.getNodeName());
         message.setKey(NodeConstants.REQUEST.COMMITTED_LOGS.toString());
         message.setRequest(NodeConstants.REQUEST.RETRIEVE.toString());
-        String entries = gson.toJson(nodeState.getEntries());
+        ArrayList<Entry> committed_logs = new ArrayList<>();
+        for(int i=0;i<nodeState.getCommitIndex();i++)
+            committed_logs.add(nodeState.getEntries().get(i));
+        String entries = gson.toJson(committed_logs);
         message.setValue(entries);
         LOGGER.info("Retrieve message: " + gson.toJson(message));
         return gson.toJson(message);
     }
 
-    public String createHeartBeatMessage() {
+    public String createHeartBeatMessage(String address) {
         Gson gson = new Gson();
         Message message = new Message();
-        message.setSender_name(nodeState.getNodeValue().toString());
+        message.setSender_name(nodeState.getNodeName());
         message.setRequest(NodeConstants.REQUEST.APPEND_ENTRY.toString());
         message.setTerm(nodeState.getTerm());
+
+        Integer matchIndex = NodeState.getNodeState().getMatchIndex().get(address);
+        Integer nextIndex = NodeState.getNodeState().getNextIndex().get(address);
+
+        if (NodeState.getNodeState().getEntries().size() > nextIndex - 1) {
+            LOGGER.info("createHeartBeatMessage.nextIndex: "+nextIndex+", ");
+            String logMessage = gson.toJson(NodeState.getNodeState().getEntries().get(nextIndex - 1));
+            message.setLog(Arrays.asList(logMessage));
+        }
+
+        message.setPrevLogIndex(matchIndex);
+        message.setPrevLogTerm(NodeState.getNodeState().getPrevLogTerm());
+        message.setCommitIndex(NodeState.getNodeState().getCommitIndex());
+
         String heartbeatMessage = gson.toJson(message);
         LOGGER.info("Sending heartbeat: " + heartbeatMessage);
         return heartbeatMessage;
     }
 
-    public String createAppendReply(boolean reply){
+    public String createAppendReply(boolean reply) {
         Gson gson = new Gson();
         Message message = new Message();
         message.setTerm(nodeState.getTerm());
         message.setRequest(NodeConstants.REQUEST.APPEND_REPLY.toString());
         message.setSender_name(nodeState.getNodeName());
         message.setValue(String.valueOf(reply));
+        message.setSuccess(reply);
+        message.setMatchIndex(getNodeState().getLastApplied());
         String appendReplyMessage = gson.toJson(message);
         LOGGER.info("createAppendReply.message: " + appendReplyMessage);
         return appendReplyMessage;

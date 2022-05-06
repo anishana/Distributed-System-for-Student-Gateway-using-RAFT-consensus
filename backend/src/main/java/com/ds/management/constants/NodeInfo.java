@@ -16,7 +16,7 @@ public class NodeInfo {
 //    public static List<String> addresses= new ArrayList<String>(List.of(new String[]{"localhost"}));
 
     public static Integer totalNodes= 5;
-    public static Integer majorityNodes = 1;
+    public static Integer majorityNodes = 3;
 
     public static final Integer base_rate= 1500;
 
