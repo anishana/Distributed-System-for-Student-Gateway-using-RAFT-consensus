@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.Node;
 
 import javax.annotation.PostConstruct;
 import java.net.DatagramPacket;
@@ -176,7 +177,7 @@ public class RequestUtilService {
         message.setKey(NodeConstants.REQUEST.COMMITTED_LOGS.toString());
         message.setRequest(NodeConstants.REQUEST.RETRIEVE.toString());
         ArrayList<Entry> committed_logs = new ArrayList<>();
-        for(int i=0;i<nodeState.getCommitIndex();i++)
+        for (int i = 0; i < nodeState.getCommitIndex(); i++)
             committed_logs.add(nodeState.getEntries().get(i));
         String entries = gson.toJson(committed_logs);
         message.setValue(entries);
@@ -195,7 +196,7 @@ public class RequestUtilService {
         Integer nextIndex = NodeState.getNodeState().getNextIndex().get(address);
 
         if (NodeState.getNodeState().getEntries().size() > nextIndex - 1) {
-            LOGGER.info("createHeartBeatMessage.nextIndex: "+nextIndex+", ");
+            LOGGER.info("createHeartBeatMessage.nextIndex: " + nextIndex + ", ");
             String logMessage = gson.toJson(NodeState.getNodeState().getEntries().get(nextIndex - 1));
             message.setLog(Arrays.asList(logMessage));
         }
@@ -211,6 +212,7 @@ public class RequestUtilService {
 
     public String createAppendReply(boolean reply) {
         Gson gson = new Gson();
+        nodeState.setPrevLogTerm(nodeState.getTerm());
         Message message = new Message();
         message.setTerm(nodeState.getTerm());
         message.setRequest(NodeConstants.REQUEST.APPEND_REPLY.toString());

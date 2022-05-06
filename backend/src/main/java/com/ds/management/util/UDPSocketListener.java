@@ -287,17 +287,32 @@ public class UDPSocketListener {
     public void checkForHeartbeat(Message message, DatagramPacket receivedPacket) {
 
         if (message.getLog() == null || message.getLog().size() == 0) {
-            if (message.getCommitIndex().intValue() != NodeState.getNodeState().getCommitIndex().intValue()) {
-                NodeState.getNodeState().setCommitIndex(message.getCommitIndex());
-            }
+
 //            LOGGER.info("Heartbeat received from: " + message.getSender_name());
         } else {
             LOGGER.info("AppendEntry Message.");
+            Gson gson = new Gson();
+            Entry entry = gson.fromJson(message.getLog().get(0), Entry.class);
+            if (Integer.parseInt(entry.getTerm()) < nodeState.getTerm())
+                sendAppendReply(false, receivedPacket);
+            else {
+                if (message.getCommitIndex().intValue() == NodeState.getNodeState().getLastApplied()) {
+                    if (message.getPrevLogTerm() == 0 || message.getPrevLogTerm().intValue() == NodeState.getNodeState().getPrevLogTerm().intValue())
+                        sendAppendReply(true, receivedPacket);
+                    else
+                        sendAppendReply(false, receivedPacket);
 
-            if (message.getCommitIndex().intValue() == NodeState.getNodeState().getLastApplied())
+                }
+            }
+
+            /*if (message.getCommitIndex().intValue() == NodeState.getNodeState().getLastApplied())
                 sendAppendReply(true, receivedPacket);
             else
-                sendAppendReply(false, receivedPacket);
+                sendAppendReply(false, receivedPacket);*/
+        }
+
+        if (message.getCommitIndex().intValue() != NodeState.getNodeState().getCommitIndex().intValue()) {
+            NodeState.getNodeState().setCommitIndex(message.getCommitIndex());
         }
     }
 
