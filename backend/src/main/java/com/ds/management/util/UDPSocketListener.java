@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.w3c.dom.Node;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
@@ -19,6 +20,7 @@ import java.io.FileOutputStream;
 import java.net.*;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 import static com.ds.management.models.NodeState.getNodeState;
 
@@ -53,7 +55,7 @@ public class UDPSocketListener {
     public void setNodeState() throws SocketException {
         socket = socketConfig.socket();
         nodeState = getNodeState();
-        socket.setSoTimeout(3000);
+        socket.setSoTimeout(6000);
         LOGGER.info("socket Info: " + socket.getLocalPort());
         LOGGER.info("Node Details: " + nodeState.toString());
     }
@@ -158,7 +160,6 @@ public class UDPSocketListener {
         Gson gson = new Gson();
         Message responseMessage = requestUtilService.createVoteResponse(voteRequestMessage);
         byte[] buf = gson.toJson(responseMessage).getBytes(StandardCharsets.UTF_8);
-
         InetAddress from_address = receivedPacket.getAddress();
         int from_port = receivedPacket.getPort();
         DatagramPacket packetToSend = new DatagramPacket(buf, buf.length, from_address, from_port);
@@ -173,15 +174,24 @@ public class UDPSocketListener {
         LOGGER.info("Vote response: " + message.toString());
         int requestTerm = message.getTerm();
         String votedBy = message.getSender_name();
-        int hasVoted = Integer.parseInt(message.getValue());
-        if (requestTerm == nodeState.getTerm() && hasVoted == 1) {
+//        int hasVoted = Integer.parseInt(message.getValue());
+        if (requestTerm == nodeState.getTerm()) {
             int currentVotes = nodeState.getNumberOfVotes();
             nodeState.setNumberOfVotes(currentVotes + 1);
+            LOGGER.info("currentVotes: " + currentVotes + ", after incrementing: " + nodeState.getNumberOfVotes());
+
 //            nodeState.getVotedBy().add(votedBy);
             if (nodeState.getNumberOfVotes() >= NodeInfo.majorityNodes) {
                 LOGGER.info("THE LEADER IS: " + nodeState.getNodeName() + "; acknowledging other nodes.");
                 nodeState.setIsLeader(true);
                 acknowledgeLeader();
+                for (String addr : NodeInfo.addresses) {
+                    nodeState.getNextIndex().put(addr, nodeState.getCommitIndex() + 1);
+                    nodeState.getMatchIndex().put(addr, 0);
+                }
+
+                LOGGER.info("updateVoteResponse.nodeState.getNextIndex(): " + nodeState.getNextIndex());
+                LOGGER.info("updateVoteResponse.nodeState.getMatchIndex(): " + nodeState.getMatchIndex());
             }
         }
     }
@@ -259,7 +269,7 @@ public class UDPSocketListener {
     }
 
     public void resumeNode() {
-        getNodeState().setCurrentShutdownState(false);
+        nodeState.setCurrentShutdownState(false);
     }
 
     public void storeRequest(Message receivedMessage, DatagramPacket receivedPacket) {
@@ -269,6 +279,7 @@ public class UDPSocketListener {
             LOGGER.info("storeRequest.entry: " + entry.toString());
             nodeState.getEntries().add(entry);
             nodeState.getCurrentAppendReplyCount().add(0);
+            LOGGER.info("nodeState.getEntries().size(): " + nodeState.getEntries().size() + ", NodeState.getNodeState().getNextIndex(): " + NodeState.getNodeState().getNextIndex());
         } else {
             sendLeaderInfo(receivedPacket);
         }
@@ -286,32 +297,30 @@ public class UDPSocketListener {
 
     public void checkForHeartbeat(Message message, DatagramPacket receivedPacket) {
 
-        if (message.getLog() == null || message.getLog().size() == 0) {
+//        if (message.getLog() == null || message.getLog().size() == 0) {
 
 //            LOGGER.info("Heartbeat received from: " + message.getSender_name());
-        } else {
+//        } else
+
+        if (message.getLog() != null && message.getLog().size() > 0) {
             LOGGER.info("AppendEntry Message.");
             Gson gson = new Gson();
             Entry entry = gson.fromJson(message.getLog().get(0), Entry.class);
             if (Integer.parseInt(entry.getTerm()) < nodeState.getTerm())
-                sendAppendReply(false, receivedPacket);
+                sendAppendReply(message, false, receivedPacket);
             else {
-                if (message.getCommitIndex().intValue() == NodeState.getNodeState().getLastApplied()) {
-                    if (message.getPrevLogTerm() == 0 || message.getPrevLogTerm().intValue() == NodeState.getNodeState().getPrevLogTerm().intValue())
-                        sendAppendReply(true, receivedPacket);
+                if (Objects.equals(message.getCommitIndex(), getNodeState().getLastApplied())) {
+                    if (message.getPrevLogTerm() == 0 || Objects.equals(message.getPrevLogTerm(), getNodeState().getPrevLogTerm()))
+                        sendAppendReply(message, true, receivedPacket);
                     else
-                        sendAppendReply(false, receivedPacket);
+                        sendAppendReply(message, false, receivedPacket);
 
                 }
             }
-
-            /*if (message.getCommitIndex().intValue() == NodeState.getNodeState().getLastApplied())
-                sendAppendReply(true, receivedPacket);
-            else
-                sendAppendReply(false, receivedPacket);*/
+        } else {
+            sendAppendReply(message, true, receivedPacket);
         }
-
-        if (message.getCommitIndex().intValue() != NodeState.getNodeState().getCommitIndex().intValue()) {
+        if (!Objects.equals(message.getCommitIndex(), getNodeState().getCommitIndex())) {
             NodeState.getNodeState().setCommitIndex(message.getCommitIndex());
         }
     }
@@ -337,31 +346,45 @@ public class UDPSocketListener {
         requestUtilService.sendPacketToNode(message, receivedPacket.getAddress(), receivedPacket.getPort());
     }
 
-    public void sendAppendReply(boolean reply, DatagramPacket receivedPacket) {
-        if (reply) {
-            Integer lastApplied = getNodeState().getLastApplied();
-            getNodeState().setLastApplied(++lastApplied);
+    public void sendAppendReply(Message message, boolean reply, DatagramPacket receivedPacket) {
+        if (reply && message.getLog() != null) {
+            Integer lastApplied = nodeState.getLastApplied();
+            nodeState.setLastApplied(++lastApplied);
+            Gson gson = new Gson();
+            Entry entry = gson.fromJson(message.getLog().get(0), Entry.class);
+            if (!message.getSender_name().equalsIgnoreCase(nodeState.getNodeName())){
+                nodeState.getEntries().add(entry);
+                nodeState.getCurrentAppendReplyCount().add(0);
+            }
         }
-        String message = requestUtilService.createAppendReply(reply);
-        requestUtilService.sendPacketToNode(message, receivedPacket.getAddress(), receivedPacket.getPort());
+        String messageStr = requestUtilService.createAppendReply(reply);
+        requestUtilService.sendPacketToNode(messageStr, receivedPacket.getAddress(), receivedPacket.getPort());
     }
 
     public void receiveAppendReply(Message message, DatagramPacket receivedPacket) {
         if (message.getSuccess()) {
 
-            Integer nextIndex = NodeState.getNodeState().getNextIndex().get(message.getSender_name());
-            NodeState.getNodeState().getNextIndex().put(message.getSender_name(), ++nextIndex);
-            NodeState.getNodeState().getMatchIndex().put(message.getSender_name(), message.getMatchIndex());
 
-            NodeState.getNodeState().incrementCurrentAppendReplyCount(message.getMatchIndex() - 1);
-            checkAndIncrementCommitIndex(message.getMatchIndex() - 1);
+            if (!Objects.equals(message.getMatchIndex(), nodeState.getMatchIndex().get(message.getSender_name()))) {
+                nodeState.getMatchIndex().put(message.getSender_name(), message.getMatchIndex());
+                LOGGER.info("message.getMatchIndex(): " + message.getMatchIndex() +
+                        ", nodeState.getNextIndex().get(message.getSender_name()): " + nodeState.getNextIndex().get(message.getSender_name()));
+                if (Objects.equals(message.getMatchIndex(), nodeState.getNextIndex().get(message.getSender_name()))) {
+                    Integer nextIndex = nodeState.getNextIndex().get(message.getSender_name());
+                    nodeState.getNextIndex().put(message.getSender_name(), ++nextIndex);
+                }
+                nodeState.incrementCurrentAppendReplyCount(message.getMatchIndex() - 1);
+                checkAndIncrementCommitIndex(message.getMatchIndex() - 1);
+            }
+
+
         }
     }
 
     private void checkAndIncrementCommitIndex(Integer matchIndex) {
-        LOGGER.info("matchIndex: " + matchIndex + ", commitIndex: " + NodeState.getNodeState().getCommitIndex() + ", currentAppendReplyCount: " + NodeState.getNodeState().getCurrentAppendReplyCount().get(matchIndex) + ", ");
-        if ((matchIndex + 1) > NodeState.getNodeState().getCommitIndex() && NodeState.getNodeState().getCurrentAppendReplyCount().get(matchIndex) >= NodeInfo.majorityNodes) {
-            NodeState.getNodeState().setCommitIndex(NodeState.getNodeState().getCommitIndex() + 1);
+        LOGGER.info("matchIndex: " + matchIndex + ", commitIndex: " + nodeState.getCommitIndex() + ", currentAppendReplyCount: " + NodeState.getNodeState().getCurrentAppendReplyCount().get(matchIndex) + ", ");
+        if ((matchIndex + 1) > NodeState.getNodeState().getCommitIndex() && nodeState.getCurrentAppendReplyCount().get(matchIndex) >= NodeInfo.majorityNodes) {
+            nodeState.setCommitIndex(NodeState.getNodeState().getCommitIndex() + 1);
         }
     }
 

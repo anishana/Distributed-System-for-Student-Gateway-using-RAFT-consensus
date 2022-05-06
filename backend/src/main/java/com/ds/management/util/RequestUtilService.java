@@ -61,7 +61,9 @@ public class RequestUtilService {
         Message message = new Message();
         message.setRequest(NodeConstants.REQUEST.VOTE_REQUEST.toString());
         message.setTerm(nodeState.getTerm());
-        message.setSender_name(nodeState.getNodeValue().toString());
+//        message.setSender_name(nodeState.getNodeValue().toString());
+        message.setSender_name(nodeState.getNodeName());
+        message.setPrevLogIndex(nodeState.getLastApplied());
         Gson gson = new Gson();
         String voteRequestMessage = gson.toJson(message);
         LOGGER.info("VOTE REQ OBJECT BY:" + nodeState.getNodeName() + "; message: " + voteRequestMessage);
@@ -111,18 +113,37 @@ public class RequestUtilService {
 
     public Message createVoteResponse(Message voteRequestMessage) {
         Integer requestTerm = voteRequestMessage.getTerm();
-        boolean hasVoted = false;
 
         Message responseMessage = new Message();
         responseMessage.setRequest(NodeConstants.REQUEST.VOTE_ACK.toString());
         responseMessage.setSender_name(nodeState.getNodeName());
         responseMessage.setTerm(requestTerm);
 
-        if (requestTerm > nodeState.getTerm()) {
+        LOGGER.info("createVoteResponse: has voted in this term: " + nodeState.getHasVotedInThisTerm()
+                + ", requestTerm: " + requestTerm + ", nodeState.getTerm(): " + nodeState.getTerm()
+                + ", voteRequestMessage.getPrevLogIndex(): " + voteRequestMessage.getPrevLogIndex()
+                + ", nodeState.getLastApplied(): " + nodeState.getLastApplied());
+        if (nodeState.getHasVotedInThisTerm()) {
             nodeState.setTerm(requestTerm);
             nodeState.setHasVotedInThisTerm(true);
-            hasVoted = true;
+            responseMessage.setValue("0");
+        } else if (requestTerm > nodeState.getTerm()) {
+            nodeState.setTerm(requestTerm);
+            nodeState.setHasVotedInThisTerm(true);
+            responseMessage.setValue("1");
+        } else if (requestTerm.equals(nodeState.getTerm()) && voteRequestMessage.getPrevLogIndex() < nodeState.getLastApplied()) {
+            LOGGER.info("Candidate node is behind the voting: " + voteRequestMessage.getPrevLogIndex());
+            nodeState.setTerm(requestTerm);
+            nodeState.setHasVotedInThisTerm(true);
+            responseMessage.setValue("0");
+
         } else {
+            nodeState.setHasVotedInThisTerm(true);
+            responseMessage.setValue("0");
+        }
+        LOGGER.info("createVoteResponse.responseMessage: " + responseMessage + " sending to " + voteRequestMessage.getSender_name());
+
+        /*else {
             if (!nodeState.getHasVotedInThisTerm()) {
                 hasVoted = true;
                 nodeState.setHasVotedInThisTerm(true);
@@ -133,7 +154,7 @@ public class RequestUtilService {
         if (hasVoted) {
             value = 1;
         }
-        responseMessage.setValue(String.valueOf(value));
+        responseMessage.setValue(String.valueOf(value));*/
         return responseMessage;
     }
 
@@ -193,10 +214,9 @@ public class RequestUtilService {
         message.setTerm(nodeState.getTerm());
 
         Integer matchIndex = NodeState.getNodeState().getMatchIndex().get(address);
-        Integer nextIndex = NodeState.getNodeState().getNextIndex().get(address);
-
-        if (NodeState.getNodeState().getEntries().size() > nextIndex - 1) {
-            LOGGER.info("createHeartBeatMessage.nextIndex: " + nextIndex + ", ");
+            Integer nextIndex = NodeState.getNodeState().getNextIndex().get(address);
+        if (nodeState.getEntries().size() > nextIndex - 1) {
+            LOGGER.info("createHeartBeatMessage.nextIndex: " + nextIndex + ", nodeState.getEntries().size(): "+nodeState.getEntries().size());
             String logMessage = gson.toJson(NodeState.getNodeState().getEntries().get(nextIndex - 1));
             message.setLog(Arrays.asList(logMessage));
         }
