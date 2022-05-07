@@ -5,6 +5,7 @@ import com.ds.management.constants.NodeInfo;
 import lombok.Data;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Data
 public class NodeState {
@@ -19,6 +20,7 @@ public class NodeState {
     private Boolean hasVotedInThisTerm;
     private Integer numberOfVotes;
     private Boolean isLeader;
+    private Integer prevLogTerm;
 
     //persistent state on all servers
     private Integer term;
@@ -32,7 +34,10 @@ public class NodeState {
     //volatile state on leaders
     private Map<String, Integer> nextIndex;
     private Map<String, Integer> matchIndex;
-    private Integer currentLeader;
+    private String currentLeader;
+
+    private List<Integer> currentAppendReplyCount;
+    private Boolean currentShutdownState;
 
     private NodeState() {
         Random random = new Random();
@@ -40,16 +45,33 @@ public class NodeState {
         timeout = this.heartbeat * 2;
         server_state = NodeConstants.SERVER_STATE.FOLLOWER;
         nodeValue = NodeInfo.NODE_VALUE;
-        nodeName= "Node"+ nodeValue;
+        nodeName = "Node" + nodeValue;
         hasVotedInThisTerm = false;
         numberOfVotes = 0;
         isLeader = false;
-        lastApplied=0;
-        commitIndex=0;
+        lastApplied = 0;
+        commitIndex = 0;
+        currentShutdownState = false;
+        prevLogTerm=0;
 
+        nextIndex = new HashMap<>();
+        matchIndex = new HashMap<>();
+        for (String add : NodeInfo.addresses) {
+            nextIndex.put(add, 1);
+            matchIndex.put(add, 0);
+        }
         term = 0;
         votedFor = "";
-        entries= new ArrayList<>();
+        entries = new ArrayList<>();
+        currentAppendReplyCount = new ArrayList<>();
+    }
+
+    public synchronized void incrementCurrentAppendReplyCount(int index) {
+        currentAppendReplyCount.set(index, currentAppendReplyCount.get(index) + 1);
+    }
+
+    public synchronized int getSynchronizedAppendReplyCount(int index) {
+        return currentAppendReplyCount.get(index);
     }
 
     public static NodeState getNodeState() {

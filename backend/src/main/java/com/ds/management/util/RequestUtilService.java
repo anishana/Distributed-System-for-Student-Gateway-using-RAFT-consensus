@@ -12,17 +12,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.Node;
 
 import javax.annotation.PostConstruct;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import static com.ds.management.models.NodeState.getNodeState;
 
 @Service
 public class RequestUtilService {
@@ -36,15 +37,15 @@ public class RequestUtilService {
     private SocketConfig socketConfig;
 
     @PostConstruct
-    public void getSocketConfig(){
+    public void getSocketConfig() {
         try {
             socket = socketConfig.socket();
         } catch (SocketException e) {
-            LOGGER.error("getSocketConfig.Error: ",e);
+            LOGGER.error("getSocketConfig.Error: ", e);
         }
     }
 
-    private static NodeState nodeState = NodeState.getNodeState();
+    private static NodeState nodeState = getNodeState();
 
     private final static Logger LOGGER = LoggerFactory.getLogger(RequestUtilService.class);
 
@@ -60,7 +61,9 @@ public class RequestUtilService {
         Message message = new Message();
         message.setRequest(NodeConstants.REQUEST.VOTE_REQUEST.toString());
         message.setTerm(nodeState.getTerm());
-        message.setSender_name(nodeState.getNodeValue().toString());
+//        message.setSender_name(nodeState.getNodeValue().toString());
+        message.setSender_name(nodeState.getNodeName());
+        message.setPrevLogIndex(nodeState.getLastApplied());
         Gson gson = new Gson();
         String voteRequestMessage = gson.toJson(message);
         LOGGER.info("VOTE REQ OBJECT BY:" + nodeState.getNodeName() + "; message: " + voteRequestMessage);
@@ -82,13 +85,13 @@ public class RequestUtilService {
     }
 
 
-    public void sendPacketToNode(String message, InetAddress to_address, int to_port){
+    public void sendPacketToNode(String message, InetAddress to_address, int to_port) {
         byte[] buf = message.getBytes(StandardCharsets.UTF_8);
         DatagramPacket packetToSend = new DatagramPacket(buf, buf.length, to_address, to_port);
         try {
             socket.send(packetToSend);
         } catch (Exception exception) {
-            LOGGER.error("sendMessageToNode.message: "+message+", Error: ", exception);
+            LOGGER.error("sendMessageToNode.message: " + message + ", Error: ", exception);
         }
     }
 
@@ -110,18 +113,37 @@ public class RequestUtilService {
 
     public Message createVoteResponse(Message voteRequestMessage) {
         Integer requestTerm = voteRequestMessage.getTerm();
-        boolean hasVoted = false;
 
         Message responseMessage = new Message();
         responseMessage.setRequest(NodeConstants.REQUEST.VOTE_ACK.toString());
-        responseMessage.setSender_name(nodeState.getNodeValue().toString());
+        responseMessage.setSender_name(nodeState.getNodeName());
         responseMessage.setTerm(requestTerm);
 
-        if (requestTerm > nodeState.getTerm()) {
+        LOGGER.info("createVoteResponse: has voted in this term: " + nodeState.getHasVotedInThisTerm()
+                + ", requestTerm: " + requestTerm + ", nodeState.getTerm(): " + nodeState.getTerm()
+                + ", voteRequestMessage.getPrevLogIndex(): " + voteRequestMessage.getPrevLogIndex()
+                + ", nodeState.getLastApplied(): " + nodeState.getLastApplied());
+        if (nodeState.getHasVotedInThisTerm()) {
             nodeState.setTerm(requestTerm);
             nodeState.setHasVotedInThisTerm(true);
-            hasVoted = true;
+            responseMessage.setValue("0");
+        } else if (requestTerm > nodeState.getTerm()) {
+            nodeState.setTerm(requestTerm);
+            nodeState.setHasVotedInThisTerm(true);
+            responseMessage.setValue("1");
+        } else if (requestTerm.equals(nodeState.getTerm()) && voteRequestMessage.getPrevLogIndex() < nodeState.getLastApplied()) {
+            LOGGER.info("Candidate node is behind the voting: " + voteRequestMessage.getPrevLogIndex());
+            nodeState.setTerm(requestTerm);
+            nodeState.setHasVotedInThisTerm(true);
+            responseMessage.setValue("0");
+
         } else {
+            nodeState.setHasVotedInThisTerm(true);
+            responseMessage.setValue("0");
+        }
+        LOGGER.info("createVoteResponse.responseMessage: " + responseMessage + " sending to " + voteRequestMessage.getSender_name());
+
+        /*else {
             if (!nodeState.getHasVotedInThisTerm()) {
                 hasVoted = true;
                 nodeState.setHasVotedInThisTerm(true);
@@ -132,13 +154,13 @@ public class RequestUtilService {
         if (hasVoted) {
             value = 1;
         }
-        responseMessage.setValue(String.valueOf(value));
+        responseMessage.setValue(String.valueOf(value));*/
         return responseMessage;
     }
 
     public Message createAcknowledgeLeaderRequest() {
         Message leaderMessage = new Message();
-        leaderMessage.setSender_name(nodeState.getNodeValue().toString());
+        leaderMessage.setSender_name(nodeState.getNodeName());
         leaderMessage.setTerm(nodeState.getTerm());
         leaderMessage.setRequest(NodeConstants.REQUEST.ACKNOWLEDGE_LEADER.toString());
         return leaderMessage;
@@ -149,14 +171,14 @@ public class RequestUtilService {
         Message message = new Message();
         message.setSender_name(nodeState.getNodeName());
         message.setRequest(NodeConstants.REQUEST.LEADER_INFO.toString());
-        message.setValue("Node" + nodeState.getCurrentLeader());
+        message.setValue(nodeState.getCurrentLeader());
         LOGGER.info(gson.toJson(message));
         return gson.toJson(message);
     }
 
     public Message createShutdownRequest() {
         Message message = new Message();
-        message.setSender_name(nodeVal);
+        message.setSender_name(nodeState.getNodeName());
         message.setRequest(NodeConstants.REQUEST.SHUTDOWN_PROPAGATE.toString());
         return message;
     }
@@ -175,30 +197,49 @@ public class RequestUtilService {
         message.setSender_name(nodeState.getNodeName());
         message.setKey(NodeConstants.REQUEST.COMMITTED_LOGS.toString());
         message.setRequest(NodeConstants.REQUEST.RETRIEVE.toString());
-        String entries = gson.toJson(nodeState.getEntries());
+        ArrayList<Entry> committed_logs = new ArrayList<>();
+        for (int i = 0; i < nodeState.getCommitIndex(); i++)
+            committed_logs.add(nodeState.getEntries().get(i));
+        String entries = gson.toJson(committed_logs);
         message.setValue(entries);
         LOGGER.info("Retrieve message: " + gson.toJson(message));
         return gson.toJson(message);
     }
 
-    public String createHeartBeatMessage() {
+    public String createHeartBeatMessage(String address) {
         Gson gson = new Gson();
         Message message = new Message();
-        message.setSender_name(nodeState.getNodeValue().toString());
+        message.setSender_name(nodeState.getNodeName());
         message.setRequest(NodeConstants.REQUEST.APPEND_ENTRY.toString());
         message.setTerm(nodeState.getTerm());
+
+        Integer matchIndex = NodeState.getNodeState().getMatchIndex().get(address);
+            Integer nextIndex = NodeState.getNodeState().getNextIndex().get(address);
+        if (nodeState.getEntries().size() > nextIndex - 1) {
+            LOGGER.info("createHeartBeatMessage.nextIndex: " + nextIndex + ", nodeState.getEntries().size(): "+nodeState.getEntries().size());
+            String logMessage = gson.toJson(NodeState.getNodeState().getEntries().get(nextIndex - 1));
+            message.setLog(Arrays.asList(logMessage));
+        }
+
+        message.setPrevLogIndex(matchIndex);
+        message.setPrevLogTerm(NodeState.getNodeState().getPrevLogTerm());
+        message.setCommitIndex(NodeState.getNodeState().getCommitIndex());
+
         String heartbeatMessage = gson.toJson(message);
         LOGGER.info("Sending heartbeat: " + heartbeatMessage);
         return heartbeatMessage;
     }
 
-    public String createAppendReply(boolean reply){
+    public String createAppendReply(boolean reply) {
         Gson gson = new Gson();
+        nodeState.setPrevLogTerm(nodeState.getTerm());
         Message message = new Message();
         message.setTerm(nodeState.getTerm());
         message.setRequest(NodeConstants.REQUEST.APPEND_REPLY.toString());
         message.setSender_name(nodeState.getNodeName());
         message.setValue(String.valueOf(reply));
+        message.setSuccess(reply);
+        message.setMatchIndex(getNodeState().getLastApplied());
         String appendReplyMessage = gson.toJson(message);
         LOGGER.info("createAppendReply.message: " + appendReplyMessage);
         return appendReplyMessage;

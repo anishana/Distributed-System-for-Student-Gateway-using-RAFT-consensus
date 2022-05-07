@@ -1,6 +1,7 @@
 package com.ds.management.util;
 
 import com.ds.management.configuration.SocketConfig;
+import com.ds.management.constants.NodeInfo;
 import com.ds.management.models.NodeState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,11 +54,14 @@ public class UDPSocketServer {
     }
 
     @Async
-    @Scheduled(fixedRate = 1500)
+    @Scheduled(fixedRate = 150)
     public void sendEcho() {
         try {
-            if (nodeState.getIsLeader() && !socket.isClosed()) {
-                requestUtilService.sendPacketToAll(requestUtilService.createHeartBeatMessage());
+            if (nodeState.getIsLeader() && !socket.isClosed() && !NodeState.getNodeState().getCurrentShutdownState()) {
+                for (String add : NodeInfo.addresses) {
+                    InetAddress address = InetAddress.getByName(add);
+                    requestUtilService.sendPacketToNode(requestUtilService.createHeartBeatMessage(add), address, NodeInfo.port);
+                }
             }
         } catch (Exception ex) {
             LOGGER.info("Exception caused in send echo: ", ex);

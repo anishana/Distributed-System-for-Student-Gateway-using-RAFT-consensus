@@ -8,6 +8,7 @@ import java.util.List;
 @Data
 @ToString
 public class Message {
+    //Populated while sending
     private String sender_name;
     private String request;
     private Integer term;
@@ -17,6 +18,10 @@ public class Message {
     private Integer prevLogTerm;
     private Integer prevLogIndex;
     private Integer commitIndex;
-    private Integer success;
+    private Boolean success;
     private Entry entry;
+
+    //Populated while receiving
+    private Integer matchIndex;
+
 }
