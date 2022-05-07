@@ -54,7 +54,7 @@ public class UDPSocketServer {
     }
 
     @Async
-    @Scheduled(fixedRate = 3000)
+    @Scheduled(fixedRate = 150)
     public void sendEcho() {
         try {
             if (nodeState.getIsLeader() && !socket.isClosed() && !NodeState.getNodeState().getCurrentShutdownState()) {

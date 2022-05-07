@@ -55,7 +55,7 @@ public class UDPSocketListener {
     public void setNodeState() throws SocketException {
         socket = socketConfig.socket();
         nodeState = getNodeState();
-        socket.setSoTimeout(6000);
+        socket.setSoTimeout(300);
         LOGGER.info("socket Info: " + socket.getLocalPort());
         LOGGER.info("Node Details: " + nodeState.toString());
     }
